@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"mydentlog","appId":"1:718241966892:android:23a6585a01f519b2a91a89","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"mydentlog","configurations":{"android":"1:718241966892:android:23a6585a01f519b2a91a89","web":"1:718241966892:web:3eb1ab228de2c196a91a89"}}}}}}

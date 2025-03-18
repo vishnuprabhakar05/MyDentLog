@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "718241966892",
+    "firebase_url": "https://mydentlog-default-rtdb.firebaseio.com",
+    "project_id": "mydentlog",
+    "storage_bucket": "mydentlog.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:718241966892:android:50731b9c9226c131a91a89",
+        "android_client_info": {
+          "package_name": "com.app.mydentlog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiQW0_xQ7VpWq7KLsB319_G_w5HqtQBsw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
