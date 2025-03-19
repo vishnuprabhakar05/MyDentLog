@@ -15,11 +15,12 @@ dependencies:
   firebase_core: ^3.12.1
   firebase_database: ^11.3.4
   url_launcher: ^6.3.1
-  google_sign_in: ^6.2.1  # 🔹 Required for Google Authentication
+  google_sign_in: ^6.2.2  # 🔹 Required for Google Authentication
   googleapis: ^12.0.0  # 🔹 Google APIs, including Drive
   googleapis_auth: ^1.4.0  # 🔹 Authentication for Google APIs
   http: ^1.2.0  # 🔹 Required for network requests
   file_picker: ^6.1.1
+  firebase_auth: ^5.5.1
 
 dev_dependencies:
   flutter_test:

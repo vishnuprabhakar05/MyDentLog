@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'input_screen.dart';
+import 'login_screen.dart'; // ✅ Import login screen for logout
 
 class SearchScreen extends StatefulWidget {
   @override
@@ -10,13 +12,54 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref("patient_details");
+  final DatabaseReference _usersRef = FirebaseDatabase.instance.ref("users");
+
   List<Map<String, dynamic>> _searchResults = [];
   TextEditingController _searchController = TextEditingController();
+  String userName = "Loading..."; // ✅ Show "Loading..." until fetched
 
   @override
   void initState() {
     super.initState();
+    _fetchUserDetails(); // ✅ Fetch logged-in user details
     _fetchAllPatients();
+  }
+
+  /// ✅ Fetch logged-in user's name or staff ID from Firebase Database
+  Future<void> _fetchUserDetails() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      print("Fetching details for UID: ${user.uid}");
+
+      DatabaseEvent event = await _usersRef.child(user.uid).once();
+      if (event.snapshot.value != null) {
+        Map<dynamic, dynamic> userData = event.snapshot.value as Map<dynamic, dynamic>;
+        print("User Data: $userData");
+
+        setState(() {
+          userName = userData["name"] ?? userData["email"] ?? "Unknown User";
+        });
+      } else {
+        print("User not found in database.");
+        setState(() {
+          userName = "User not found";
+        });
+      }
+    } else {
+      print("No user logged in.");
+      setState(() {
+        userName = "Not Logged In";
+      });
+    }
+  }
+
+  /// ✅ Logout function
+  void _logout() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+    );
   }
 
   void _fetchAllPatients() {
@@ -96,7 +139,24 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Search Patients")),
+      appBar: AppBar(
+        title: Text("Search Patients"),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Center(
+              child: Text(
+                userName, // ✅ Display logged-in user name
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.logout, color: Colors.white),
+            onPressed: _logout, // ✅ Logout button
+          ),
+        ],
+      ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
