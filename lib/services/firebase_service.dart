@@ -21,31 +21,28 @@ class FirebaseService {
       DataSnapshot snapshot = event.snapshot;
 
       if (snapshot.value != null && snapshot.value is Map) {
-        Map<dynamic, dynamic> data = snapshot.value as Map;
+        Map<String, dynamic> data = Map<String, dynamic>.from(snapshot.value as Map);
         return data.entries.map((entry) {
-          return UserModel.fromMap(entry.value as Map<String, dynamic>);
+          return UserModel.fromMap(Map<String, dynamic>.from(entry.value));
         }).toList();
       }
     } catch (e) {
-      print('Error fetching users: $e');
+      print(' Error fetching users: $e');
     }
     return [];
   }
 
   /// Fetch a user by email or staff ID
-  static Future<UserModel?> getUserByEmail(String email) async {
+  static Future<UserModel?> getUserByEmail(String emailOrStaffId) async {
     try {
-      // Convert email to a Firebase-friendly key
-      String key = email.replaceAll('.', ','); 
-
-      DatabaseEvent event = await _database.child('users').child(key).once();
+      DatabaseEvent event = await _database.child('users').child(emailOrStaffId).once();
       DataSnapshot snapshot = event.snapshot;
 
       if (snapshot.value != null && snapshot.value is Map) {
-        return UserModel.fromMap(snapshot.value as Map<String, dynamic>);
+        return UserModel.fromMap(Map<String, dynamic>.from(snapshot.value as Map));
       }
     } catch (e) {
-      print('Error fetching user by email: $e');
+      print(' Error fetching user by email: $e');
     }
     return null;
   }
@@ -58,24 +55,25 @@ class FirebaseService {
 
       await _database.child('users').child(key).set(user.toMap());
     } catch (e) {
-      print('Error adding user: $e');
+      print(' Error adding user: $e');
     }
   }
 
-  /// Fetch all patient details
+  /// Fetch all patient details \
   static Future<List<PatientModel>> getPatients() async {
     try {
       DatabaseEvent event = await _database.child('patient_details').once();
       DataSnapshot snapshot = event.snapshot;
 
-      if (snapshot.value != null && snapshot.value is Map) {
-        Map<dynamic, dynamic> data = snapshot.value as Map;
-        return data.entries.map((entry) {
-          return PatientModel.fromMap(entry.value as Map<String, dynamic>);
-        }).toList();
-      }
+      if (snapshot.value == null) return [];
+
+      // Convert Firebase data properly
+      Map<String, dynamic> data = Map<String, dynamic>.from(snapshot.value as Map);
+      return data.entries.map((entry) {
+        return PatientModel.fromMap(Map<String, dynamic>.from(entry.value));
+      }).toList();
     } catch (e) {
-      print('Error fetching patients: $e');
+      print(' Error fetching patients: $e');
     }
     return [];
   }
@@ -83,15 +81,14 @@ class FirebaseService {
   /// Fetch a single patient by OP number
   static Future<PatientModel?> getPatientByOpNo(String opNo) async {
     try {
-      DatabaseEvent event =
-          await _database.child('patient_details').child(opNo).once();
+      DatabaseEvent event = await _database.child('patient_details').child(opNo).once();
       DataSnapshot snapshot = event.snapshot;
 
       if (snapshot.value != null && snapshot.value is Map) {
-        return PatientModel.fromMap(snapshot.value as Map<String, dynamic>);
+        return PatientModel.fromMap(Map<String, dynamic>.from(snapshot.value as Map));
       }
     } catch (e) {
-      print('Error fetching patient: $e');
+      print(' Error fetching patient: $e');
     }
     return null;
   }

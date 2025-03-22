@@ -4,7 +4,7 @@ class PatientModel {
   final String phone;
   final String place;
   final String caseSheet;
-  final int timestamp;
+  final String timestamp; 
 
   PatientModel({
     required this.opNo,
@@ -12,28 +12,28 @@ class PatientModel {
     required this.phone,
     required this.place,
     required this.caseSheet,
-    required this.timestamp,
+    required this.timestamp, 
   });
 
   factory PatientModel.fromMap(Map<String, dynamic> map) {
     return PatientModel(
-      opNo: map['op_no'] ?? '',
-      name: map['name'] ?? '',
-      phone: map['phone'] ?? '',
-      place: map['place'] ?? '',
-      caseSheet: map['case_sheet'] ?? '',
-      timestamp: map['timestamp'] ?? 0,
+      opNo: map['OP_NO'] ?? '',  
+      name: map['NAME'] ?? '',
+      phone: map['PHONE'] ?? '',
+      place: map['PLACE'] ?? '',
+      caseSheet: map['CASE_SHEET'] ?? '',
+      timestamp: map['TIMESTAMP'] ?? '', 
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'op_no': opNo,
-      'name': name,
-      'phone': phone,
-      'place': place,
-      'case_sheet': caseSheet,
-      'timestamp': timestamp,
+      'OP_NO': opNo, 
+      'NAME': name,
+      'PHONE': phone,
+      'PLACE': place,
+      'CASE_SHEET': caseSheet,
+      'TIMESTAMP': timestamp, 
     };
   }
 }

@@ -19,7 +19,7 @@ dependencies:
   googleapis: ^12.0.0  # 🔹 Google APIs, including Drive
   googleapis_auth: ^1.4.0  # 🔹 Authentication for Google APIs
   http: ^1.2.0  # 🔹 Required for network requests
-  file_picker: ^6.1.1
+  file_picker: ^9.2.1
   firebase_auth: ^5.5.1
   provider: ^6.1.2
   uuid: ^4.5.1

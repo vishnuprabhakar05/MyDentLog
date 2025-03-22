@@ -11,6 +11,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   bool _isLoading = false;
 
+  /// 🔹 Handles login logic
   void _login(BuildContext context) async {
     setState(() => _isLoading = true);
 
@@ -19,15 +20,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = false);
 
-    if (!success) {
+    if (success) {
+      print("Login successful, navigating to SearchScreen");
+      Navigator.pushReplacementNamed(context, '/search'); // Navigate to search
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Invalid credentials or not authorized')),
       );
     }
-  }
-
-  void _navigateToSignUp(BuildContext context) {
-    Navigator.pushNamed(context, '/signup');  // Ensure '/signup' is defined in routes
   }
 
   @override
@@ -61,8 +61,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
               SizedBox(height: 10),
               TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/admin'),
-                   child: Text("Signup (Admin Only)"),
+                onPressed: () => Navigator.pushNamed(context, '/admin'), // Navigate to Admin Signup
+                child: Text("Signup (Admin Only)"),
               ),
             ],
           ),

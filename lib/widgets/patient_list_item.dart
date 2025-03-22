@@ -8,13 +8,15 @@ class PatientListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(patient.name),
-      subtitle: Text("OP No: ${patient.opNo} | Phone: ${patient.phone}"),
-      trailing: Icon(Icons.arrow_forward),
-      onTap: () {
-        // Navigate to detailed patient screen (if needed)
-      },
+    return Card(
+      child: ListTile(
+        title: Text(patient.name, style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text("OP No: ${patient.opNo} | ${patient.place} | ${patient.phone}"),
+        trailing: Icon(Icons.arrow_forward),
+        onTap: () {
+          // TODO: Navigate to patient details screen (future feature)
+        },
+      ),
     );
   }
 }

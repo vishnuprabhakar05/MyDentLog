@@ -13,7 +13,12 @@
           "package_name": "com.app.mydentlog"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "718241966892-lb810p6u2pn2ibr2kijtfisr7o4dused.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAiQW0_xQ7VpWq7KLsB319_G_w5HqtQBsw"
@@ -21,7 +26,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "718241966892-8eq4imq8ee94cr9ou3p8kt917uep97ko.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

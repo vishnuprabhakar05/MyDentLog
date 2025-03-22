@@ -11,14 +11,18 @@ class PatientProvider extends ChangeNotifier {
 
   /// Fetch all patients from Firebase
   Future<void> fetchPatients() async {
-    _isLoading = true;
-    notifyListeners();
+  _isLoading = true;
+  notifyListeners(); 
 
-    _patients = await FirebaseService.getPatients();
+  final fetchedPatients = await FirebaseService.getPatients();
 
-    _isLoading = false;
-    notifyListeners();
+  _isLoading = false;
+  _patients = fetchedPatients;
+
+  if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+    notifyListeners(); 
   }
+}
 
   /// Add or update a patient
   Future<void> addOrUpdatePatient(PatientModel patient) async {

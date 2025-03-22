@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+
 import 'providers/auth_provider.dart';
 import 'providers/patient_provider.dart';
 import 'providers/user_provider.dart';
+
 import 'screens/login_screen.dart';
+import 'screens/search_screen.dart';
+
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   try {
-    await Firebase.initializeApp();
-    print("Firebase initialized successfully!");
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("Firebase initialized successfully");
   } catch (e) {
-    print("Firebase initialization failed: $e");
+    print("Firebase initialization error: $e");
   }
 
   runApp(MyApp());
@@ -31,7 +39,11 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'MyDentLog',
         theme: ThemeData(primarySwatch: Colors.blue),
-        home: LoginScreen(), // Start with login
+        initialRoute: '/',
+        routes: {
+          '/': (context) => LoginScreen(),
+          '/search': (context) => SearchScreen()
+        },
       ),
     );
   }
