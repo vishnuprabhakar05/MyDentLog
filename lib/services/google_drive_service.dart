@@ -10,21 +10,21 @@ class GoogleDriveService {
     scopes: [drive.DriveApi.driveFileScope],
   );
 
-  /// Uploads a file to Google Drive and returns the file's URL
+ 
   static Future<String?> uploadFile(File file) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null; // User canceled sign-in
+      if (googleUser == null) return null; 
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Fix: Use http.Client() properly
+     
       final http.Client baseClient = http.Client();
       final AuthClient authClient = authenticatedClient(
         baseClient,
         AccessCredentials(
           AccessToken('Bearer', googleAuth.accessToken!, DateTime.now().toUtc().add(Duration(hours: 1))),
-          null, // Refresh token is not needed here
+          null,
           [drive.DriveApi.driveFileScope],
         ),
       );
@@ -33,17 +33,17 @@ class GoogleDriveService {
 
       final drive.File driveFile = drive.File()
         ..name = path.basename(file.path)
-        ..parents = ["root"]; // Change folder ID if needed
+        ..parents = ["root"]; 
 
       final drive.Media media = drive.Media(file.openRead(), file.lengthSync());
 
       final drive.File uploadedFile = await driveApi.files.create(driveFile, uploadMedia: media);
 
-      // Fix: Close authClient after use
+     
       authClient.close();
       baseClient.close();
 
-      return "https://drive.google.com/file/d/${uploadedFile.id}/view"; // Return the file link
+      return "https://drive.google.com/file/d/${uploadedFile.id}/view"; 
     } catch (e) {
       print(" Error uploading file to Google Drive: $e");
       return null;

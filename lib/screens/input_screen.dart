@@ -1,65 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/patient_model.dart';
 import '../services/firebase_service.dart';
+import 'search_screen.dart';
 
-class InputScreen extends StatefulWidget {
-  @override
-  _InputScreenState createState() => _InputScreenState();
-}
+class InputController extends GetxController {
+  final formKey = GlobalKey<FormState>();
+  final opNoController = TextEditingController();
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final placeController = TextEditingController();
+  var caseSheetUrl = RxnString();
+  var isLoading = false.obs;
+  var treatmentHistory = <String, String>{}.obs;
 
-class _InputScreenState extends State<InputScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _opNoController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _placeController = TextEditingController();
-  
-  String? _caseSheetUrl;
-  bool _isLoading = false;
-  Map<String, String> _treatmentHistory = {};
-
-  void _pickFile() async {
-    final ImagePicker _picker = ImagePicker();
-    XFile? file = await _picker.pickImage(source: ImageSource.gallery);
+  void pickFile() async {
+    final ImagePicker picker = ImagePicker();
+    XFile? file = await picker.pickImage(source: ImageSource.gallery);
 
     if (file != null) {
-      setState(() => _isLoading = true);
-      final firebaseService = Provider.of<FirebaseService>(context, listen: false);
-      String? uploadedUrl = await firebaseService.uploadCaseSheet(file);
-      setState(() {
-        _caseSheetUrl = uploadedUrl;
-        _isLoading = false;
-      });
+      isLoading.value = true;
+      String? uploadedUrl = await FirebaseService.uploadCaseSheet(file);
+      caseSheetUrl.value = uploadedUrl;
+      isLoading.value = false;
       if (uploadedUrl == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("File upload failed")),
-        );
+        Get.snackbar("Error", "File upload failed", backgroundColor: Colors.red, snackPosition: SnackPosition.BOTTOM);
       }
     }
   }
 
-  void _openCaseSheet() {
+  void openCaseSheet() {
     String date = DateTime.now().toIso8601String().split("T")[0];
-    TextEditingController _caseNotesController =
-        TextEditingController(text: _treatmentHistory[date] ?? '');
+    TextEditingController caseNotesController = TextEditingController(text: treatmentHistory[date] ?? '');
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+    Get.dialog(
+      AlertDialog(
         title: Text("Treatment History - $date"),
         content: TextField(
-          controller: _caseNotesController,
+          controller: caseNotesController,
           maxLines: 8,
           decoration: InputDecoration(hintText: "Enter treatment details...", border: OutlineInputBorder()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+          TextButton(onPressed: () => Get.back(), child: Text("Cancel")),
           ElevatedButton(
             onPressed: () {
-              setState(() => _treatmentHistory[date] = _caseNotesController.text);
-              Navigator.pop(context);
+              treatmentHistory[date] = caseNotesController.text;
+              Get.back();
             },
             child: Text("Save"),
           ),
@@ -68,32 +56,40 @@ class _InputScreenState extends State<InputScreen> {
     );
   }
 
-  void _savePatient() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+  void savePatient() async {
+    if (!formKey.currentState!.validate()) return;
+    isLoading.value = true;
+    try {
+      String opNo = opNoController.text.trim();
+      PatientModel? existingPatient = await FirebaseService.getPatientByOpNo(opNo);
+      Map<String, String> updatedHistory = existingPatient?.treatmentHistory ?? {};
+      updatedHistory.addAll(treatmentHistory);
 
-    String opNo = _opNoController.text.trim();
-    final firebaseService = Provider.of<FirebaseService>(context, listen: false);
-    PatientModel? existingPatient = await FirebaseService.getPatientByOpNo(opNo);
+      final patient = PatientModel(
+        opNo: opNo,
+        name: nameController.text.trim(),
+        phone: phoneController.text.trim(),
+        place: placeController.text.trim(),
+        caseSheet: caseSheetUrl.value ?? existingPatient?.caseSheet ?? '',
+        timestamp: DateTime.now().toIso8601String(),
+        treatmentHistory: updatedHistory,
+      );
 
-    Map<String, String> updatedHistory = existingPatient?.treatmentHistory ?? {};
-    updatedHistory.addAll(_treatmentHistory);
+      await FirebaseService.addOrUpdatePatient(patient);
 
-    final patient = PatientModel(
-      opNo: opNo,
-      name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
-      place: _placeController.text.trim(),
-      caseSheet: _caseSheetUrl ?? existingPatient?.caseSheet ?? '',
-      timestamp: DateTime.now().toIso8601String(),
-      treatmentHistory: updatedHistory,
-    );
-
-    await FirebaseService.addOrUpdatePatient(patient);
-
-    setState(() => _isLoading = false);
-    Navigator.pop(context);
+      Get.snackbar("Success", "Patient saved successfully!", backgroundColor: Colors.green, snackPosition: SnackPosition.BOTTOM);
+      
+      isLoading.value = false;
+      Get.off(() => SearchScreen());
+    } catch (error) {
+      Get.snackbar("Error", "Failed to save patient. Please try again!", backgroundColor: Colors.red, snackPosition: SnackPosition.BOTTOM);
+      isLoading.value = false;
+    }
   }
+}
+
+class InputScreen extends StatelessWidget {
+  final InputController controller = Get.put(InputController());
 
   @override
   Widget build(BuildContext context) {
@@ -102,87 +98,85 @@ class _InputScreenState extends State<InputScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
-          key: _formKey,
+          key: controller.formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text("Patient Details", style: Theme.of(context).textTheme.headlineSmall),
               SizedBox(height: 15),
-              TextFormField(
-                controller: _opNoController,
-                decoration: InputDecoration(labelText: "OP No", prefixIcon: Icon(Icons.numbers), border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? 'Required' : null,
-              ),
+              _buildTextField(controller.opNoController, "OP No", Icons.numbers),
               SizedBox(height: 15),
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: "Name", prefixIcon: Icon(Icons.person), border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? 'Required' : null,
-              ),
+              _buildTextField(controller.nameController, "Name", Icons.person),
               SizedBox(height: 15),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(labelText: "Phone", prefixIcon: Icon(Icons.phone), border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? 'Required' : null,
-              ),
+              _buildTextField(controller.phoneController, "Phone", Icons.phone, TextInputType.phone),
               SizedBox(height: 15),
-              TextFormField(
-                controller: _placeController,
-                decoration: InputDecoration(labelText: "Place", prefixIcon: Icon(Icons.location_on), border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? 'Required' : null,
-              ),
+              _buildTextField(controller.placeController, "Place", Icons.location_on),
               SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: _pickFile,
+                onPressed: controller.pickFile,
                 icon: Icon(Icons.camera_alt),
                 label: Text("Upload Case Sheet"),
               ),
-              if (_caseSheetUrl != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text("Uploaded File: $_caseSheetUrl", style: TextStyle(fontSize: 14, color: Colors.green), overflow: TextOverflow.ellipsis),
-                ),
+              Obx(() => controller.caseSheetUrl.value != null
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text("Uploaded File: ${controller.caseSheetUrl.value}",
+                          style: TextStyle(fontSize: 14, color: Colors.green), overflow: TextOverflow.ellipsis),
+                    )
+                  : SizedBox.shrink()),
               SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: _openCaseSheet,
+                onPressed: controller.openCaseSheet,
                 icon: Icon(Icons.edit_note),
                 label: Text("Treatment History"),
               ),
               SizedBox(height: 20),
-              if (_treatmentHistory.isNotEmpty) ...[
-                Text("Past Visits:", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ..._treatmentHistory.keys.map((date) => ListTile(
-                      title: Text(date),
-                      trailing: Icon(Icons.arrow_forward),
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text("Case Sheet - $date"),
-                            content: TextField(
-                              controller: TextEditingController(text: _treatmentHistory[date]),
-                              maxLines: 8,
-                              readOnly: true,
-                              decoration: InputDecoration(border: OutlineInputBorder()),
-                            ),
-                            actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("Close"))],
-                          ),
-                        );
-                      },
-                    )),
-              ],
+              Obx(() => controller.treatmentHistory.isNotEmpty
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Past Visits:", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ...controller.treatmentHistory.keys.map((date) => ListTile(
+                              title: Text(date),
+                              trailing: Icon(Icons.arrow_forward),
+                              onTap: () {
+                                Get.dialog(
+                                  AlertDialog(
+                                    title: Text("Case Sheet - $date"),
+                                    content: TextField(
+                                      controller: TextEditingController(text: controller.treatmentHistory[date]),
+                                      maxLines: 8,
+                                      readOnly: true,
+                                      decoration: InputDecoration(border: OutlineInputBorder()),
+                                    ),
+                                    actions: [TextButton(onPressed: () => Get.back(), child: Text("Close"))],
+                                  ),
+                                );
+                              },
+                            )),
+                      ],
+                    )
+                  : SizedBox.shrink()),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _savePatient,
-                  child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text("Save Patient"),
-                ),
+                child: Obx(() => ElevatedButton(
+                      onPressed: controller.isLoading.value ? null : controller.savePatient,
+                      child: controller.isLoading.value ? CircularProgressIndicator(color: Colors.white) : Text("Save Patient"),
+                    )),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, [TextInputType? keyboardType]) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), border: OutlineInputBorder()),
+      validator: (value) => value!.isEmpty ? 'Required' : null,
     );
   }
 }

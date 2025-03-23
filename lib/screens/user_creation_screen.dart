@@ -23,11 +23,11 @@ class _UserCreationScreenState extends State<UserCreationScreen> {
 
     setState(() => _isLoading = true);
 
-    String emailOrId = _emailController.text.trim(); // Use this as the key in Firebase
+    String emailOrId = _emailController.text.trim(); 
 
     UserModel newUser = UserModel(
       name: _nameController.text.trim(),
-      email: emailOrId, // Store as key in Firebase
+      email: emailOrId, 
       role: _selectedRole,
     );
 
