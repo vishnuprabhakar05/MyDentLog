@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/patient_model.dart';
-import '../services/firebase_service.dart';
+import 'package:my_dentlog_app/services/firebase_service.dart';
 
 class PatientProvider extends ChangeNotifier {
   List<PatientModel> _patients = [];

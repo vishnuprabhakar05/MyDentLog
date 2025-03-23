@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/firebase_service.dart';
+import 'package:my_dentlog_app/services/firebase_service.dart';
 import '../models/user_model.dart';
 
 class AuthProvider with ChangeNotifier {

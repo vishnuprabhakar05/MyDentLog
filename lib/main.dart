@@ -38,11 +38,21 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'MyDentLog',
-        theme: ThemeData(primarySwatch: Colors.blue),
+        theme: ThemeData(
+          useMaterial3: true, 
+          colorSchemeSeed: Colors.teal, // Generates dynamic color scheme
+          brightness: Brightness.light, // Light mode (change to dark if needed)
+        ),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          colorSchemeSeed: Colors.teal,
+          brightness: Brightness.dark, // Dark mode support
+        ),
+        themeMode: ThemeMode.system, // Auto-switch based on system settings
         initialRoute: '/',
         routes: {
           '/': (context) => LoginScreen(),
-          '/search': (context) => SearchScreen()
+          '/search': (context) => SearchScreen(),
         },
       ),
     );
