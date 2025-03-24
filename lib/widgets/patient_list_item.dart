@@ -42,7 +42,7 @@ class PatientListItem extends StatelessWidget {
               },
             ),
 
-            /// View Button
+            
             IconButton(
               icon: Icon(Icons.arrow_forward),
               onPressed: () {
@@ -50,7 +50,7 @@ class PatientListItem extends StatelessWidget {
               },
             ),
 
-            /// Delete Button with Confirmation
+            
             IconButton(
               icon: Icon(Icons.delete, color: Colors.red),
               onPressed: () {

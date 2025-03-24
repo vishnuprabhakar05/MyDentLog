@@ -21,7 +21,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (user != null && user.role == "admin") {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => UserCreationScreen()),
+        MaterialPageRoute(builder: (context) => UserManagementScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

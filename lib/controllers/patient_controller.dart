@@ -49,7 +49,6 @@ class PatientController extends GetxController {
       ).toList();
     }
   }
-
   
   Future<void> deletePatient(String opNo) async {
     try {

@@ -8,6 +8,7 @@ import 'controllers/user_controller.dart';
 
 import 'screens/login_screen.dart';
 import 'screens/search_screen.dart';
+import 'screens/user_creation_screen.dart';
 
 import 'firebase_options.dart';
 
@@ -52,6 +53,7 @@ class MyApp extends StatelessWidget {
       getPages: [
         GetPage(name: '/', page: () => LoginScreen()),
         GetPage(name: '/search', page: () => SearchScreen()),
+        GetPage(name: '/admin', page: () => UserManagementScreen()),
       ],
     );
   }

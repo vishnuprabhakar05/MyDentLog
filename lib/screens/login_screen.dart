@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../screens/search_screen.dart';
+import '../screens/user_creation_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   final AuthController authController = Get.put(AuthController());
@@ -26,7 +27,7 @@ class LoginScreen extends StatelessWidget {
             ),
           ),
 
-          /// Glassmorphism Card
+          
           Center(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
@@ -53,6 +54,8 @@ class LoginScreen extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 20),
+
+                      
                       TextField(
                         controller: _emailController,
                         style: TextStyle(color: Colors.white),
@@ -76,8 +79,31 @@ class LoginScreen extends StatelessWidget {
                             ? CircularProgressIndicator(color: Colors.white)
                             : FilledButton.icon(
                                 onPressed: () async {
-                                  await authController.login(_emailController.text.trim());
-                                  Get.offAll(() => SearchScreen()); 
+                                  String emailOrStaffId = _emailController.text.trim();
+
+                                  if (emailOrStaffId.isEmpty) {
+                                    Get.snackbar(
+                                      "Error",
+                                      "Please enter Email or Staff ID",
+                                      backgroundColor: Colors.red,
+                                      colorText: Colors.white,
+                                    );
+                                    return;
+                                  }
+
+                                  bool loginSuccess = await authController.login(emailOrStaffId);
+
+                                  if (loginSuccess) {
+                                    
+                                    Get.offAll(() => SearchScreen());
+                                  } else {
+                                    Get.snackbar(
+                                      "Login Failed",
+                                      "Invalid credentials. Please try again.",
+                                      backgroundColor: Colors.red,
+                                      colorText: Colors.white,
+                                    );
+                                  }
                                 },
                                 icon: Icon(Icons.login, color: Colors.white),
                                 label: Text("Login", style: TextStyle(color: Colors.white)),
@@ -90,8 +116,12 @@ class LoginScreen extends StatelessWidget {
                       }),
 
                       SizedBox(height: 10),
+
+                      
                       TextButton(
-                        onPressed: () => Get.toNamed('/admin'),
+                        onPressed: () {
+                          _showAdminVerificationDialog(context);
+                        },
                         child: Text("Signup (Admin Only)", style: TextStyle(color: Colors.white)),
                       ),
                     ],
@@ -100,6 +130,48 @@ class LoginScreen extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  
+  void _showAdminVerificationDialog(BuildContext context) {
+    TextEditingController adminEmailController = TextEditingController();
+
+    Get.defaultDialog(
+      title: "Admin Verification",
+      content: Column(
+        children: [
+          TextField(
+            controller: adminEmailController,
+            decoration: InputDecoration(
+              labelText: "Enter Admin Email",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 10),
+          Obx(() {
+            return authController.isLoading.value
+                ? CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: () async {
+                      bool isAdmin = await authController.verifyAdmin(adminEmailController.text.trim());
+                      if (isAdmin) {
+                        Get.back(); // Close the dialog before navigating
+                        Get.to(() => UserManagementScreen());
+                      } else {
+                        Get.snackbar(
+                          "Error",
+                          "Access denied! Only admins can sign up new users.",
+                          backgroundColor: Colors.red,
+                          colorText: Colors.white,
+                        );
+                      }
+                    },
+                    child: Text("Verify"),
+                  );
+          }),
         ],
       ),
     );

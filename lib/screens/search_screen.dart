@@ -8,8 +8,6 @@
   import 'package:my_dentlog_app/screens/input_screen.dart' as screens;
 
 
-
-
   class SearchScreen extends StatelessWidget {
     final TextEditingController _searchController = TextEditingController();
     final PatientController patientController = Get.put(PatientController());
@@ -50,7 +48,7 @@
                           ),
                           child: Row(
                             children: [
-                              /// Search Bar
+                              
                               Expanded(
                                 child: TextField(
                                   controller: _searchController,
@@ -72,7 +70,7 @@
 
                               SizedBox(width: 10),
 
-                              /// Logout Button
+                              
                               IconButton(
                                 icon: Icon(Icons.logout, color: Colors.white),
                                 onPressed: () {
@@ -87,7 +85,7 @@
                     ),
                   ),
 
-                  /// Patient List
+                  
                   Expanded(
                     child: Obx(() {
                       if (patientController.isLoading.value) {
@@ -110,7 +108,7 @@
           ],
         ),
 
-        /// Floating Button for New Patient
+        
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () {
                   Get.to(() => screens.InputScreen(), arguments: {'patient': null, 'isReadOnly': false});

@@ -1,108 +1,235 @@
 import 'package:flutter/material.dart';
-import '../services/firebase_service.dart';
-import '../models/user_model.dart';
+import 'package:my_dentlog_app/models/user_model.dart';
+import 'package:my_dentlog_app/services/firebase_service.dart';
 
-class UserCreationScreen extends StatefulWidget {
+class UserManagementScreen extends StatefulWidget {
   @override
-  _UserCreationScreenState createState() => _UserCreationScreenState();
+  _UserManagementScreenState createState() => _UserManagementScreenState();
 }
 
-class _UserCreationScreenState extends State<UserCreationScreen> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  String _selectedRole = "Doctor";
-  bool _isLoading = false;
+class _UserManagementScreenState extends State<UserManagementScreen> {
+  List<UserModel> _users = [];
+  List<UserModel> _filteredUsers = [];
+  final TextEditingController _searchController = TextEditingController();
 
-  void _createUser() async {
-    if (_nameController.text.isEmpty || _emailController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter all fields')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    String emailOrId = _emailController.text.trim(); 
-
-    UserModel newUser = UserModel(
-      name: _nameController.text.trim(),
-      email: emailOrId, 
-      role: _selectedRole,
-    );
-
-    await FirebaseService.addUser(newUser);
-
-    setState(() => _isLoading = false);
-    _showSuccessDialog();
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
+    _searchController.addListener(_filterUsers);
   }
 
-  void _showSuccessDialog() {
+  Future<void> _fetchUsers() async {
+    List<UserModel> users = await FirebaseService.getUsers();
+    setState(() {
+      _users = users;
+      _filteredUsers = users;
+    });
+  }
+
+  void _filterUsers() {
+    String query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredUsers = _users.where((user) {
+        return user.name.toLowerCase().contains(query) ||
+            user.email.toLowerCase().contains(query);
+      }).toList();
+    });
+  }
+
+  void _editUser(UserModel user) {
+    TextEditingController nameController = TextEditingController(text: user.name);
+    TextEditingController emailController = TextEditingController(text: user.email);
+    String selectedRole = user.role;
+    bool isAdmin = user.admin;
+
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("User Created"),
-          content: Text("Do you want to add another user?"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _nameController.clear();
-                _emailController.clear();
-              },
-              child: Text("Yes"),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text("Edit User"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
+                SizedBox(height: 10),
+                TextField(controller: emailController, decoration: InputDecoration(labelText: "Email/Staff ID")),
+                SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  items: ["Doctor", "Staff"]
+                      .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => selectedRole = value);
+                  },
+                  decoration: InputDecoration(labelText: "Role"),
+                ),
+                SizedBox(height: 10),
+                CheckboxListTile(
+                  title: Text("Admin"),
+                  value: isAdmin,
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => isAdmin = value);
+                  },
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-              },
-              child: Text("No"),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+              ElevatedButton(
+                onPressed: () async {
+                  UserModel updatedUser = UserModel(
+                    name: nameController.text.trim(),
+                    email: emailController.text.trim(),
+                    role: selectedRole,
+                    admin: isAdmin,
+                  );
+                  await FirebaseService.updateUser(user.email, updatedUser);
+                  await _fetchUsers();
+                  Navigator.pop(context);
+                },
+                child: Text("Update"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _deleteUser(String email) async {
+    bool confirm = await _showDeleteConfirmationDialog();
+    if (confirm) {
+      await FirebaseService.deleteUser(email);
+      await _fetchUsers();
+    }
+  }
+
+  Future<bool> _showDeleteConfirmationDialog() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Delete User"),
+        content: Text("Are you sure you want to delete this user?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text("Delete", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  void _showUserCreationDialog() {
+    TextEditingController nameController = TextEditingController();
+    TextEditingController emailController = TextEditingController();
+    String selectedRole = "Doctor";
+    bool isAdmin = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text("Create New User"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
+                SizedBox(height: 10),
+                TextField(controller: emailController, decoration: InputDecoration(labelText: "Email/Staff ID")),
+                SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  items: ["Doctor", "Staff"]
+                      .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => selectedRole = value);
+                  },
+                  decoration: InputDecoration(labelText: "Role"),
+                ),
+                SizedBox(height: 10),
+                CheckboxListTile(
+                  title: Text("Admin"),
+                  value: isAdmin,
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => isAdmin = value);
+                  },
+                ),
+              ],
             ),
-          ],
-        );
-      },
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+              ElevatedButton(
+                onPressed: () async {
+                  if (nameController.text.trim().isEmpty || emailController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("⚠️ Please enter all details")));
+                    return;
+                  }
+
+                  UserModel newUser = UserModel(
+                    name: nameController.text.trim(),
+                    email: emailController.text.trim(),
+                    role: selectedRole,
+                    admin: isAdmin,
+                  );
+
+                  await FirebaseService.createUser(newUser);
+                  await _fetchUsers();
+                  Navigator.pop(context);
+                },
+                child: Text("Create"),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Create New User")),
+      appBar: AppBar(title: Text("User Management")),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text("Users", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: "Full Name"),
+              controller: _searchController,
+              decoration: InputDecoration(labelText: "Search by name or email"),
             ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: "Email or Staff ID"),
+            Expanded(
+              child: ListView.separated(
+                itemCount: _filteredUsers.length,
+                separatorBuilder: (_, __) => Divider(),
+                itemBuilder: (context, index) {
+                  UserModel user = _filteredUsers[index];
+                  return ListTile(
+                    title: Text(user.name, style: TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text("${user.email} • ${user.role}"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(icon: Icon(Icons.edit), onPressed: () => _editUser(user)),
+                        IconButton(icon: Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteUser(user.email)),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-            SizedBox(height: 10),
-            DropdownButton<String>(
-              value: _selectedRole,
-              items: ["Doctor", "Staff"].map((role) {
-                return DropdownMenuItem(value: role, child: Text(role));
-              }).toList(),
-              onChanged: (value) {
-                setState(() => _selectedRole = value!);
-              },
-            ),
-            SizedBox(height: 20),
-            _isLoading
-                ? CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _createUser,
-                    child: Text("Add User"),
-                  ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showUserCreationDialog,
+        child: Icon(Icons.add),
+        tooltip: "Create New User",
       ),
     );
   }

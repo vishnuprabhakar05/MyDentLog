@@ -1,42 +1,56 @@
 import 'package:get/get.dart';
 import 'package:my_dentlog_app/models/user_model.dart';
 import 'package:my_dentlog_app/services/firebase_service.dart';
-import 'package:my_dentlog_app/screens/search_screen.dart'; 
 
 class AuthController extends GetxController {
   var currentUser = Rxn<UserModel>(); 
   var isLoading = false.obs;
 
-  Future<void> login(String emailOrStaffId) async {
+  
+  Future<bool> login(String emailOrStaffId) async {
+  isLoading.value = true;
+  try {
+    var user = await FirebaseService.getUserByEmail(emailOrStaffId);
+    isLoading.value = false;
+
+    if (user != null) {
+      currentUser.value = user;  
+      return true;  
+    } else {
+      return false; 
+    }
+  } catch (e) {
+    isLoading.value = false;
+    return false; 
+  }
+}
+
+  
+  Future<bool> verifyAdmin(String email) async {
     try {
-      isLoading.value = true; 
-      print('🔐 Attempting login for: $emailOrStaffId');
+      isLoading.value = true;
+      print('🔍 Checking if $email is an admin...');
 
-      UserModel? user = await FirebaseService.getUserByEmail(emailOrStaffId);
+      UserModel? user = await FirebaseService.getUserByEmail(email);
 
-      if (user == null) {
-        print(' User not found or unauthorized.');
-        Get.snackbar("Login Failed", "Invalid credentials",
-            snackPosition: SnackPosition.BOTTOM);
-        return;
+      if (user != null && user.admin) {
+        print('Admin verified: ${user.email}');
+        return true;
+      } else {
+        print('Admin verification failed for: $email');
+        return false;
       }
-
-      print('User authenticated: ${user.toMap()}');
-      currentUser.value = user;
-
-     
-      Get.offAll(() => SearchScreen());
     } catch (e) {
-      print(' Login error: $e');
-      Get.snackbar("Error", "Something went wrong. Try again.",
-          snackPosition: SnackPosition.BOTTOM);
+      print('Error verifying admin: $e');
+      return false;
     } finally {
-      isLoading.value = false; 
+      isLoading.value = false;
     }
   }
 
+  
   void logout() {
     currentUser.value = null;
-    Get.offAllNamed('/'); 
+    Get.offAllNamed('/');
   }
 }
