@@ -12,6 +12,8 @@ import 'screens/user_creation_screen.dart';
 
 import 'firebase_options.dart';
 
+import 'config/lab_config.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -28,6 +30,8 @@ void main() async {
   Get.put(AuthController());
   Get.put(PatientController());
   Get.put(UserController());
+
+  await LabConfig.loadLabWorkTypes();
 
   runApp(MyApp());
 }

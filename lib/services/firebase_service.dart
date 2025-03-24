@@ -1,6 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
 import '../models/patient_model.dart';
 import '../models/user_model.dart';
+import '../models/lab_model.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../firebase_options.dart';
 import 'package:image_picker/image_picker.dart';
@@ -167,5 +168,43 @@ class FirebaseService {
       print('Error deleting user: $e');
       return false;
     }
+  }
+
+  Future<void> addLab(LabModel lab) async {
+  DatabaseReference ref = database.child("lab_details").push();
+  await ref.set({
+    "labId": ref.key,
+    "labName": lab.labName,
+    "phone": lab.phone ?? "",
+    "location": lab.location ?? "",
+    "workTypes": lab.workTypes, 
+  });
+}
+
+
+  
+  Future<void> updateLab(LabModel lab) async {
+  await database.child("lab_details").child(lab.labId!).update({
+    "labName": lab.labName,
+    "phone": lab.phone ?? "",
+    "location": lab.location ?? "",
+    "workTypes": lab.workTypes, 
+  });
+}
+
+
+  // ✅ Delete Lab
+  Future<void> deleteLab(String labId) async {
+    await database.child("lab_details/$labId").remove();
+  }
+
+  
+  Future<List<LabModel>> getLabs() async {
+    DataSnapshot snapshot = await database.child("lab_details").get();
+    if (snapshot.exists) {
+      Map<dynamic, dynamic> labsMap = snapshot.value as Map<dynamic, dynamic>;
+      return labsMap.entries.map((e) => LabModel.fromMap(Map<String, dynamic>.from(e.value))).toList();
+    }
+    return [];
   }
 }
