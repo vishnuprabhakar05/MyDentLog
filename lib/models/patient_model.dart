@@ -5,7 +5,7 @@ class PatientModel {
   String place;
   String caseSheet;
   String timestamp;
-  Map<String, String>? treatmentHistory; 
+  Map<String, Map<String, String>>? treatmentHistory; 
 
   PatientModel({
     required this.opNo,
@@ -26,7 +26,11 @@ class PatientModel {
       caseSheet: map['CASE_SHEET'] ?? '',
       timestamp: map['TIMESTAMP'] ?? '',
       treatmentHistory: map['TREATMENT_HISTORY'] != null
-          ? Map<String, String>.from(map['TREATMENT_HISTORY'])
+          ? Map<String, Map<String, String>>.from(
+              (map['TREATMENT_HISTORY'] as Map).map(
+                (key, value) => MapEntry(key, Map<String, String>.from(value)),
+              ),
+            )
           : {},
     );
   }

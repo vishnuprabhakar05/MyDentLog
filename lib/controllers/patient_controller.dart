@@ -15,27 +15,36 @@ class PatientController extends GetxController {
   }
 
   void fetchPatients() {
-    isLoading.value = true;
+  isLoading.value = true;
 
-    _database.child('patient_details').onValue.listen((event) {
-      if (event.snapshot.value is Map) {
-        Map<String, dynamic> data = Map<String, dynamic>.from(event.snapshot.value as Map);
-        patients.value = data.entries
-            .map((entry) => PatientModel.fromMap(Map<String, dynamic>.from(entry.value)))
-            .toList();
-        filteredPatients.value = patients;
-        print("Patients Updated: ${patients.length}");
-      } else {
-        patients.clear();
-        filteredPatients.clear();
-        print("No patients found.");
-      }
-      isLoading.value = false;
-    }, onError: (error) {
-      print("Error fetching patients: $error");
-      isLoading.value = false;
-    });
-  }
+  _database.child('patient_details').onValue.listen((event) {
+    if (event.snapshot.value == null) {
+      patients.clear();
+      filteredPatients.clear();
+      print("No patients found.");
+    } else if (event.snapshot.value is Map) {
+      Map<String, dynamic> data = Map<String, dynamic>.from(event.snapshot.value as Map);
+      
+      patients.value = data.entries.map((entry) {
+        try {
+          return PatientModel.fromMap(Map<String, dynamic>.from(entry.value));
+        } catch (e) {
+          print("Error parsing patient data: $e");
+          return null;
+        }
+      }).whereType<PatientModel>().toList(); // Remove null values safely
+
+      filteredPatients.value = patients;
+      print("Patients Updated: ${patients.length}");
+    } else {
+      print("Unexpected data format in Firebase.");
+    }
+    isLoading.value = false;
+  }, onError: (error) {
+    print("Error fetching patients: $error");
+    isLoading.value = false;
+  });
+}
 
   void filterPatients(String query) {
     if (query.isEmpty) {

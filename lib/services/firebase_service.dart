@@ -181,7 +181,6 @@ class FirebaseService {
   });
 }
 
-
   
   Future<void> updateLab(LabModel lab) async {
   await database.child("lab_details").child(lab.labId!).update({
@@ -192,14 +191,12 @@ class FirebaseService {
   });
 }
 
-
-  // ✅ Delete Lab
   Future<void> deleteLab(String labId) async {
     await database.child("lab_details/$labId").remove();
   }
 
   
-  Future<List<LabModel>> getLabs() async {
+   Future<List<LabModel>> getLabs() async {
     DataSnapshot snapshot = await database.child("lab_details").get();
     if (snapshot.exists) {
       Map<dynamic, dynamic> labsMap = snapshot.value as Map<dynamic, dynamic>;
