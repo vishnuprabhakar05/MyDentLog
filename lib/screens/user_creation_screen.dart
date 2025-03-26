@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:my_dentlog_app/models/user_model.dart';
 import 'package:my_dentlog_app/services/firebase_service.dart';
+import 'package:my_dentlog_app/controllers/user_controller.dart';
+
 
 class UserManagementScreen extends StatefulWidget {
   @override
@@ -11,6 +13,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   List<UserModel> _users = [];
   List<UserModel> _filteredUsers = [];
   final TextEditingController _searchController = TextEditingController();
+  final UserController userController = UserController();
 
   @override
   void initState() {
@@ -38,8 +41,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _editUser(UserModel user) {
-    TextEditingController nameController = TextEditingController(text: user.name);
-    TextEditingController emailController = TextEditingController(text: user.email);
+    TextEditingController nameController =
+        TextEditingController(text: user.name);
+    TextEditingController emailController =
+        TextEditingController(text: user.email);
     String selectedRole = user.role;
     bool isAdmin = user.admin;
 
@@ -52,17 +57,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
+                TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(labelText: "Name")),
                 SizedBox(height: 10),
-                TextField(controller: emailController, decoration: InputDecoration(labelText: "Email/Staff ID")),
+                TextField(
+                    controller: emailController,
+                    decoration: InputDecoration(labelText: "Email/Staff ID")),
                 SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   value: selectedRole,
                   items: ["Doctor", "Staff"]
-                      .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+                      .map((role) =>
+                          DropdownMenuItem(value: role, child: Text(role)))
                       .toList(),
                   onChanged: (value) {
-                    if (value != null) setDialogState(() => selectedRole = value);
+                    if (value != null)
+                      setDialogState(() => selectedRole = value);
                   },
                   decoration: InputDecoration(labelText: "Role"),
                 ),
@@ -77,7 +88,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancel")),
               ElevatedButton(
                 onPressed: () async {
                   UserModel updatedUser = UserModel(
@@ -109,16 +122,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   Future<bool> _showDeleteConfirmationDialog() async {
     return await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Delete User"),
-        content: Text("Are you sure you want to delete this user?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text("Delete", style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text("Delete User"),
+            content: Text("Are you sure you want to delete this user?"),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text("Cancel")),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text("Delete", style: TextStyle(color: Colors.red))),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   void _showUserCreationDialog() {
@@ -136,17 +154,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameController, decoration: InputDecoration(labelText: "Name")),
+                TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(labelText: "Name")),
                 SizedBox(height: 10),
-                TextField(controller: emailController, decoration: InputDecoration(labelText: "Email/Staff ID")),
+                TextField(
+                    controller: emailController,
+                    decoration: InputDecoration(labelText: "Email/Staff ID")),
                 SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   value: selectedRole,
                   items: ["Doctor", "Staff"]
-                      .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+                      .map((role) =>
+                          DropdownMenuItem(value: role, child: Text(role)))
                       .toList(),
                   onChanged: (value) {
-                    if (value != null) setDialogState(() => selectedRole = value);
+                    if (value != null)
+                      setDialogState(() => selectedRole = value);
                   },
                   decoration: InputDecoration(labelText: "Role"),
                 ),
@@ -161,22 +185,32 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancel")),
               ElevatedButton(
                 onPressed: () async {
-                  if (nameController.text.trim().isEmpty || emailController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("⚠️ Please enter all details")));
+                  if (nameController.text.trim().isEmpty ||
+                      emailController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("⚠️ Please enter all details")));
                     return;
                   }
+                  String name = nameController.text
+                      .trim()
+                      .split(" ")
+                      .map((word) => word.isNotEmpty
+                          ? word[0].toUpperCase() +
+                              word.substring(1).toLowerCase()
+                          : "")
+                      .join(" ");
 
-                  UserModel newUser = UserModel(
-                    name: nameController.text.trim(),
-                    email: emailController.text.trim(),
-                    role: selectedRole,
-                    admin: isAdmin,
-                  );
+                  if (selectedRole.toLowerCase() == "doctor" &&
+                      !name.toLowerCase().startsWith("dr. ")) {
+                    name = "Dr.$name";
+                  }
 
-                  await FirebaseService.createUser(newUser);
+                  await userController.createUser(name,emailController.text.trim(),isAdmin,selectedRole);
                   await _fetchUsers();
                   Navigator.pop(context);
                 },
@@ -198,7 +232,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Users", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Users",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(
               controller: _searchController,
               decoration: InputDecoration(labelText: "Search by name or email"),
@@ -210,13 +245,18 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 itemBuilder: (context, index) {
                   UserModel user = _filteredUsers[index];
                   return ListTile(
-                    title: Text(user.name, style: TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(user.name,
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text("${user.email} • ${user.role}"),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(icon: Icon(Icons.edit), onPressed: () => _editUser(user)),
-                        IconButton(icon: Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteUser(user.email)),
+                        IconButton(
+                            icon: Icon(Icons.edit),
+                            onPressed: () => _editUser(user)),
+                        IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteUser(user.email)),
                       ],
                     ),
                   );

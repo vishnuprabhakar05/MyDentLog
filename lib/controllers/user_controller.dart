@@ -56,22 +56,5 @@ class UserController extends GetxController {
       return false;
     }
   }
-
   
-  Future<void> deleteUser(String email) async {
-    try {
-      await FirebaseService.database
-          .child("users")
-          .child(email.replaceAll(".", "_")) 
-          .remove();
-
-      users.removeWhere((user) => user.email == email); 
-
-      print("User deleted: $email");
-      Get.snackbar("Success", "User deleted successfully!");
-    } catch (e) {
-      print("Error deleting user: $e");
-      Get.snackbar("Error", "Failed to delete user.");
-    }
-  }
 }

@@ -29,7 +29,7 @@ class AuthController extends GetxController {
   Future<bool> verifyAdmin(String email) async {
     try {
       isLoading.value = true;
-      print('🔍 Checking if $email is an admin...');
+      print('Checking if $email is an admin...');
 
       UserModel? user = await FirebaseService.getUserByEmail(email);
 

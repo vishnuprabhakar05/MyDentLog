@@ -33,7 +33,7 @@ class SearchScreen extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
-                // Search bar and logout button
+                // Search bar and logout button with user name
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: ClipRRect(
@@ -71,14 +71,24 @@ class SearchScreen extends StatelessWidget {
 
                             SizedBox(width: 10),
 
-                            // Logout button
-                            IconButton(
-                              icon: Icon(Icons.logout, color: Colors.white),
-                              onPressed: () {
-                                authController.logout();
-                                Get.offAll(() => LoginScreen());
-                              },
-                            ),
+                            // User name & logout button
+                            Obx(() {
+                              final user = authController.currentUser.value;
+                              return Row(
+                                children: [
+                                  if (user != null)
+                                    Text(
+                                      user.name,
+                                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                                    ),
+                                  SizedBox(width: 8),
+                                  IconButton(
+                                    icon: Icon(Icons.logout, color: Colors.white),
+                                    onPressed: () => _confirmLogout(context),
+                                  ),
+                                ],
+                              );
+                            }),
                           ],
                         ),
                       ),
@@ -149,6 +159,28 @@ class SearchScreen extends StatelessWidget {
         icon: Icon(Icons.add, color: Colors.white),
         label: Text("Add", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blueAccent.shade700,
+      ),
+    );
+  }
+
+  // Logout Confirmation Dialog
+  void _confirmLogout(BuildContext context) {
+    Get.defaultDialog(
+      title: "Logout",
+      titleStyle: TextStyle(fontWeight: FontWeight.bold),
+      middleText: "Are you sure you want to log out?",
+      middleTextStyle: TextStyle(fontSize: 16),
+      confirm: ElevatedButton(
+        onPressed: () {
+          authController.logout();
+          Get.offAll(() => LoginScreen());
+        },
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+        child: Text("Logout", style: TextStyle(color: Colors.white)),
+      ),
+      cancel: TextButton(
+        onPressed: () => Get.back(),
+        child: Text("Cancel"),
       ),
     );
   }

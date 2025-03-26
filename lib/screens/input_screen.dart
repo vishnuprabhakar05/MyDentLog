@@ -15,10 +15,11 @@ class InputController extends GetxController {
   final treatmentController = TextEditingController();
 
   var caseSheetUrl = RxnString();
+  var iopaUrl = RxnString(); // IOPA File URL
   var isLoading = false.obs;
   var showTreatmentInputs = false.obs;
   var treatmentHistory = <String, Map<String, String>>{}.obs;
-  var enableLabWorkType = false.obs; // Checkbox state
+  var enableLabWorkType = false.obs;
 
   final FirebaseService _firebaseService = FirebaseService();
 
@@ -27,7 +28,7 @@ class InputController extends GetxController {
   var labs = <LabModel>[].obs;
   var workTypes = <String>[].obs;
 
-  var editingKey = RxnString(); // Track the key of the treatment being edited
+  var editingKey = RxnString();
 
   @override
   void onInit() {
@@ -44,6 +45,7 @@ class InputController extends GetxController {
     selectedWorkType.value = null;
   }
 
+  // Pick and upload Case Sheet file
   void pickFile() async {
     final ImagePicker picker = ImagePicker();
     XFile? file = await picker.pickImage(source: ImageSource.gallery);
@@ -56,6 +58,23 @@ class InputController extends GetxController {
 
       if (uploadedUrl == null) {
         Get.snackbar("Error", "File upload failed", backgroundColor: Colors.red, snackPosition: SnackPosition.BOTTOM);
+      }
+    }
+  }
+
+  // Pick and upload IOPA file
+  void pickIOPAFile() async {
+    final ImagePicker picker = ImagePicker();
+    XFile? file = await picker.pickImage(source: ImageSource.gallery);
+
+    if (file != null) {
+      isLoading.value = true;
+      String? uploadedUrl = await FirebaseService.uploadCaseSheet(file); // Change this if there's a separate method for IOPA upload
+      iopaUrl.value = uploadedUrl;
+      isLoading.value = false;
+
+      if (uploadedUrl == null) {
+        Get.snackbar("Error", "IOPA upload failed", backgroundColor: Colors.red, snackPosition: SnackPosition.BOTTOM);
       }
     }
   }
@@ -87,16 +106,6 @@ class InputController extends GetxController {
     enableLabWorkType.value = false;
 
     Get.snackbar("Success", "Treatment notes updated", backgroundColor: Colors.green, snackPosition: SnackPosition.BOTTOM);
-  }
-
-  void editTreatmentHistory(String key, Map<String, String> details) {
-    treatmentController.text = details["notes"] ?? "";
-    selectedLab.value = labs.firstWhereOrNull((lab) => lab.labName == details["lab"]);
-    updateWorkTypes();
-    selectedWorkType.value = details["workType"];
-    showTreatmentInputs.value = true;
-    editingKey.value = key;
-    enableLabWorkType.value = details["lab"]!.isNotEmpty;
   }
 
   void savePatient() async {
@@ -155,10 +164,26 @@ class InputScreen extends StatelessWidget {
               _buildTextField(controller.placeController, "Place", Icons.location_on),
               SizedBox(height: 20),
 
-              ElevatedButton.icon(
-                onPressed: controller.pickFile,
-                icon: Icon(Icons.camera_alt),
-                label: Text("Upload Case Sheet"),
+              // Upload Case Sheet & Upload IOPA Buttons in Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: controller.pickFile,
+                      icon: Icon(Icons.upload_file),
+                      label: Text("Upload Case Sheet"),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: controller.pickIOPAFile,
+                      icon: Icon(Icons.image),
+                      label: Text("Upload IOPA"),
+                    ),
+                  ),
+                ],
               ),
 
               SizedBox(height: 20),
@@ -167,19 +192,6 @@ class InputScreen extends StatelessWidget {
                 onPressed: controller.toggleTreatmentInputs,
                 child: Obx(() => Text(controller.showTreatmentInputs.value ? "Hide Treatment Notes" : "Add Treatment Notes")),
               ),
-
-              Obx(() => controller.showTreatmentInputs.value ? _buildTreatmentInputSection() : SizedBox.shrink()),
-
-              SizedBox(height: 20),
-
-              Obx(() => Column(
-                children: controller.treatmentHistory.entries.map((entry) {
-                  return ExpansionTile(
-                    title: Text("Treatment Date: ${entry.key}"),
-                    children: [_buildEditableTreatmentTile(entry.key, entry.value)],
-                  );
-                }).toList(),
-              )),
 
               SizedBox(height: 20),
 
@@ -194,74 +206,16 @@ class InputScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTreatmentInputSection() {
-    return Column(
-      children: [
-        CheckboxListTile(
-          title: Text("Enable Lab & Work Type"),
-          value: controller.enableLabWorkType.value,
-          onChanged: (value) => controller.enableLabWorkType.value = value ?? false,
-        ),
-        TextFormField(
-          controller: controller.treatmentController,
-          keyboardType: TextInputType.multiline,
-          maxLines: 6,
-          decoration: InputDecoration(labelText: "Treatment Notes", border: OutlineInputBorder()),
-        ),
-        SizedBox(height: 10),
-        Obx(() => controller.enableLabWorkType.value
-            ? Column(
-                children: [
-                  _buildDropdown("Lab", controller.labs.map((lab) => lab.labName).toList(), controller.selectedLab.value?.labName, (val) {
-                    controller.selectedLab.value = controller.labs.firstWhere((lab) => lab.labName == val);
-                    controller.updateWorkTypes();
-                  }),
-                  SizedBox(height: 10),
-                  _buildDropdown("Work Type", controller.workTypes, controller.selectedWorkType.value, (val) => controller.selectedWorkType.value = val),
-                ],
-              )
-            : SizedBox.shrink()),
-        SizedBox(height: 10),
-        ElevatedButton(onPressed: controller.addOrUpdateTreatmentHistory, child: Text("Save Notes")),
-      ],
-    );
-  }
-  Widget _buildEditableTreatmentTile(String key, Map<String, String> details) {
-      return ListTile(
-        title: Text(details["notes"] ?? ""),
-        subtitle: Text("Lab: ${details["lab"]}, Work: ${details["workType"]}"),
-        trailing: IconButton(icon: Icon(Icons.edit), onPressed: () => controller.editTreatmentHistory(key, details)),
-      );
-    }
-    Widget _buildTextField(TextEditingController controller, String label, IconData icon, [TextInputType keyboardType = TextInputType.text]) {
-      return TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          border: OutlineInputBorder(),
-        ),
-        validator: (value) => value == null || value.isEmpty ? "$label cannot be empty" : null,
-      );
-    }
-
-    Widget _buildDropdown(String label, List<String> items, String? selectedValue, ValueChanged<String?> onChanged) {
-  return Container(
-    padding: EdgeInsets.symmetric(horizontal: 10),
-    decoration: BoxDecoration(
-      border: Border.all(color: Colors.grey),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: DropdownButtonFormField<String>(
-      value: selectedValue,
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, [TextInputType keyboardType = TextInputType.text]) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
-        border: InputBorder.none, // Removes default dropdown border
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(),
       ),
-      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-      onChanged: onChanged,
-    ),
-  );
-}
+      validator: (value) => value == null || value.isEmpty ? "$label cannot be empty" : null,
+    );
+  }
 }
