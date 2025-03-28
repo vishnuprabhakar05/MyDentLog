@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/patient_model.dart';
-import '../screens/input_screen.dart' as screens;
+import '../screens/input_screen.dart';
 import '../controllers/patient_controller.dart';
 
 class PatientListItem extends StatelessWidget {
@@ -10,7 +10,7 @@ class PatientListItem extends StatelessWidget {
 
   PatientListItem({Key? key, required this.patient}) : super(key: key);
 
-  void _confirmDelete(BuildContext context) {
+  void _confirmDelete() {
     Get.defaultDialog(
       title: "Confirm Delete",
       middleText: "Are you sure you want to delete ${patient.name}?",
@@ -19,43 +19,71 @@ class PatientListItem extends StatelessWidget {
       confirmTextColor: Colors.white,
       onConfirm: () {
         patientController.deletePatient(patient.opNo);
-        Get.back(); 
+        Get.back();
       },
-      onCancel: () {},
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 2,
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
-        title: Text(patient.name, style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text("OP No: ${patient.opNo} | ${patient.place} | ${patient.phone}"),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        title: Text(
+          patient.name,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 4),
+            Text("OP No: ${patient.opNo}"),
+            Text("${patient.place} • ${patient.phone}"),
+          ],
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            /// Edit Button
+            // View Button
             IconButton(
-              icon: Icon(Icons.edit, color: Colors.blue),
+              icon: Icon(Icons.visibility, color: Colors.blue),
+              tooltip: 'View Details',
               onPressed: () {
-                Get.to(() => screens.InputScreen(), arguments: {'patient': patient, 'isReadOnly': false});
+                Get.to(
+                  () => InputScreen(),
+                  arguments: {
+                    'patient': patient,
+                    'isReadOnly': true,
+                  },
+                );
               },
             ),
-
             
+            // Edit Button
             IconButton(
-              icon: Icon(Icons.arrow_forward),
+              icon: Icon(Icons.edit, color: Colors.green),
+              tooltip: 'Edit Patient',
               onPressed: () {
-                Get.to(() => screens.InputScreen(), arguments: {'patient': patient, 'isReadOnly': true});
+                Get.to(
+                  () => InputScreen(),
+                  arguments: {
+                    'patient': patient,
+                    'isReadOnly': false,
+                  },
+                );
               },
             ),
-
             
+            // Delete Button
             IconButton(
               icon: Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                _confirmDelete(context);
-              },
+              tooltip: 'Delete Patient',
+              onPressed: _confirmDelete, // Now matches VoidCallback type
             ),
           ],
         ),

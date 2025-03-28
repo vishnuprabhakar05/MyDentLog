@@ -25,7 +25,7 @@ class AppThemes {
   static final ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.dark(
-      primary: Colors.green,
+      primary: const Color.fromRGBO(76, 175, 80, 1),
       onPrimary: Colors.black,
       background: Colors.black,
       onBackground: Colors.white,

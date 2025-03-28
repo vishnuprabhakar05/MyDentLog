@@ -7,6 +7,7 @@ import '../screens/login_screen.dart';
 import 'package:my_dentlog_app/widgets/patient_list_item.dart';
 import 'package:my_dentlog_app/screens/input_screen.dart' as screens;
 import 'package:my_dentlog_app/screens/labs_screen.dart';
+import 'package:my_dentlog_app/screens/settings_screen.dart'; // Settings screen
 
 class SearchScreen extends StatelessWidget {
   final TextEditingController _searchController = TextEditingController();
@@ -33,7 +34,7 @@ class SearchScreen extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
-                // Search bar and logout button with user name
+                // Search bar, user name, logout, and settings (for admin)
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: ClipRRect(
@@ -71,7 +72,7 @@ class SearchScreen extends StatelessWidget {
 
                             SizedBox(width: 10),
 
-                            // User name & logout button
+                            // User name, settings (if admin), and logout button
                             Obx(() {
                               final user = authController.currentUser.value;
                               return Row(
@@ -82,6 +83,16 @@ class SearchScreen extends StatelessWidget {
                                       style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
                                     ),
                                   SizedBox(width: 8),
+
+                                  // Settings icon for admin
+                                  if (user != null && user.admin) 
+                                    IconButton(
+                                      icon: Icon(Icons.settings, color: Colors.white),
+                                      onPressed: () {
+                                        Get.to(() => SettingsScreen());
+                                      },
+                                    ),
+
                                   IconButton(
                                     icon: Icon(Icons.logout, color: Colors.white),
                                     onPressed: () => _confirmLogout(context),

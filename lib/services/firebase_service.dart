@@ -1,4 +1,5 @@
 import 'package:firebase_database/firebase_database.dart';
+import 'package:my_dentlog_app/models/settings_model.dart';
 import '../models/patient_model.dart';
 import '../models/user_model.dart';
 import '../models/lab_model.dart';
@@ -203,5 +204,19 @@ class FirebaseService {
       return labsMap.entries.map((e) => LabModel.fromMap(Map<String, dynamic>.from(e.value))).toList();
     }
     return [];
+  }
+
+  // Fetch Google Drive link from Firebase
+  static Future<SettingsModel> getGoogleDriveLinkFromSettings() async {
+    DataSnapshot snapshot = await database.child("settings").get();
+    if (snapshot.exists) {
+      return SettingsModel.fromMap(snapshot.value as Map<dynamic, dynamic>);
+    }
+    return SettingsModel(googleDriveLink: ""); // Default values if not found
+  }
+
+  // Update settings in Firebase
+  static Future<void> updateSettings(SettingsModel settings) async {
+    await database.child("settings").update(settings.toMap());
   }
 }
