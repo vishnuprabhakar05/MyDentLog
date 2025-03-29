@@ -1,11 +1,16 @@
+import 'dart:io'; // Add this import
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:google_api_availability/google_api_availability.dart';
 import '../models/patient_model.dart';
 import '../models/lab_model.dart';
 import '../services/firebase_service.dart';
 import 'search_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';  // Add this import for PlatformException
 
 class InputController extends GetxController {
   final formKey = GlobalKey<FormState>();
@@ -21,7 +26,8 @@ class InputController extends GetxController {
   var treatmentHistory = <String, Map<String, String>>{}.obs;
   var isReadOnly = false.obs;
   var includeLabDetails = false.obs;
-  var showUploadSuccess = false.obs; // Track if we should show upload success message
+  var showUploadSuccess = false.obs; 
+  var isUploading = false.obs;
 
   final FirebaseService _firebaseService = FirebaseService();
 
@@ -39,7 +45,7 @@ class InputController extends GetxController {
   }
 
   void _initializeFromArguments() {
-    showUploadSuccess.value = false; // Reset upload success status
+    showUploadSuccess.value = false;
     final arguments = Get.arguments;
     if (arguments != null) {
       final PatientModel? patient = arguments['patient'];
@@ -60,7 +66,16 @@ class InputController extends GetxController {
   }
 
   void fetchLabs() async {
-    labs.value = await _firebaseService.getLabs();
+    try {
+      labs.value = await _firebaseService.getLabs();
+    } catch (e) {
+      Get.snackbar(
+        "Error", 
+        "Failed to fetch labs: ${e.toString()}",
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 
   void updateWorkTypes() {
@@ -68,38 +83,110 @@ class InputController extends GetxController {
     selectedWorkType.value = null;
   }
 
-  void pickFile() async {
-    if (isReadOnly.value) return;
+  Future<bool> _checkAndroidPermissions() async {
+  if (!Platform.isAndroid) return true;
+  
+  try {
+    // Check Google Play Services availability
+    final googleApiAvailability = GoogleApiAvailability.instance;
+    final status = await googleApiAvailability.checkGooglePlayServicesAvailability();
     
+    if (status != 0) {  // 0 means SERVICE_AVAILABLE
+      // This just shows the dialog to users - it doesn't return a value
+      await googleApiAvailability.makeGooglePlayServicesAvailable();
+      
+      // Check status again after user attempts to resolve
+      final newStatus = await googleApiAvailability.checkGooglePlayServicesAvailability();
+      return newStatus == 0;
+    }
+
+    // Check storage permissions
+    final permissionStatus = await Permission.storage.request();
+    return permissionStatus.isGranted;
+    
+  } on PlatformException catch (e) {
+    Get.snackbar(
+      "Error", 
+      "Permission check failed: ${e.message}",
+      backgroundColor: Colors.red,
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    return false;
+  }
+}
+
+void pickFile() async {
+  if (isReadOnly.value) return;
+  
+  try {
+    // Check permissions on Android
+    if (!kIsWeb && Platform.isAndroid && !await _checkAndroidPermissions()) {
+      return;
+    }
+
     final ImagePicker picker = ImagePicker();
-    final XFile? file = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1080,
+      imageQuality: 90,
+    );
 
     if (file != null) {
-      isLoading.value = true;
-      final String? uploadedUrl = await FirebaseService.uploadCaseSheet(file);
-      caseSheetUrl.value = uploadedUrl;
-      isLoading.value = false;
-      showUploadSuccess.value = uploadedUrl != null; // Only show if upload was successful
+      isUploading.value = true;
+      try {
+        final String? uploadedUrl = await FirebaseService.uploadCaseSheet(file);
+        caseSheetUrl.value = uploadedUrl;
+        showUploadSuccess.value = uploadedUrl != null;
 
-      if (uploadedUrl == null) {
+        if (uploadedUrl == null) {
+          Get.snackbar(
+            "Error", 
+            "File upload failed",
+            backgroundColor: Colors.red,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        } else {
+          Get.snackbar(
+            "Success", 
+            "File uploaded to Google Drive",
+            backgroundColor: Colors.green,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+      } catch (e) {
         Get.snackbar(
           "Error", 
-          "File upload failed",
+          "File upload failed: ${e.toString()}",
           backgroundColor: Colors.red,
           snackPosition: SnackPosition.BOTTOM,
         );
+      } finally {
+        isUploading.value = false;
       }
     }
+  } catch (e) {
+    Get.snackbar(
+      "Error", 
+      "Failed to pick file: ${e.toString()}",
+      backgroundColor: Colors.red,
+      snackPosition: SnackPosition.BOTTOM,
+    );
   }
+}
 
   void toggleTreatmentInputs() {
     if (isReadOnly.value) return;
-    showTreatmentInputs.toggle();
+    showTreatmentInputs.value = !showTreatmentInputs.value;
   }
 
   void toggleIncludeLabDetails(bool? value) {
     if (value != null) {
       includeLabDetails.value = value;
+      if (!value) {
+        selectedLab.value = null;
+        selectedWorkType.value = null;
+      }
     }
   }
 
@@ -189,6 +276,13 @@ class InputController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
       );
       Get.off(() => SearchScreen());
+    } on PlatformException catch (e) {
+      Get.snackbar(
+        "Error", 
+        e.message ?? "Platform error while saving",
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } catch (error) {
       Get.snackbar(
         "Error", 
@@ -287,48 +381,11 @@ class InputScreen extends StatelessWidget {
                               controller.isReadOnly.value,
                             ),
                             const SizedBox(height: 20),
-                            Obx(() => !controller.isReadOnly.value
-                                ? ElevatedButton.icon(
-                                    onPressed: controller.pickFile,
-                                    icon: const Icon(Icons.upload, color: Colors.white),
-                                    label: const Text("Upload Case Sheet", style: TextStyle(color: Colors.white)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue.shade700,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(vertical: 15),
-                                    ),
-                                  )
-                                : const SizedBox()),
-                            // Only show upload success message if we actually uploaded a file
-                            Obx(() => controller.showUploadSuccess.value
-                                ? const Padding(
-                                    padding: EdgeInsets.only(top: 10),
-                                    child: Text(
-                                      "File uploaded",
-                                      style: TextStyle(color: Colors.white70),
-                                    ),
-                                  )
-                                : const SizedBox()),
+                            _buildUploadButton(),
                             const SizedBox(height: 20),
                             _buildTreatmentSection(theme),
                             const SizedBox(height: 20),
-                            Obx(() => controller.isLoading.value
-                                ? const CircularProgressIndicator(color: Colors.white)
-                                : !controller.isReadOnly.value
-                                    ? ElevatedButton(
-                                        onPressed: controller.savePatient,
-                                        child: const Text("Save Patient", style: TextStyle(color: Colors.white)),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green.shade700,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                                        ),
-                                      )
-                                    : const SizedBox()),
+                            _buildSaveButton(),
                           ],
                         ),
                       ),
@@ -341,6 +398,75 @@ class InputScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildUploadButton() {
+    return Obx(() => !controller.isReadOnly.value
+        ? Column(
+            children: [
+              ElevatedButton(
+                onPressed: controller.isUploading.value ? null : controller.pickFile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: controller.isUploading.value 
+                      ? Colors.blue.shade400 
+                      : Colors.blue.shade700,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (controller.isUploading.value)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
+                    else
+                      const Icon(Icons.upload, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Text(
+                      controller.isUploading.value 
+                          ? "Uploading..." 
+                          : "Upload Case Sheet",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+              if (controller.showUploadSuccess.value)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Text(
+                    "File uploaded to Google Drive",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+            ],
+          )
+        : const SizedBox());
+  }
+
+  Widget _buildSaveButton() {
+    return Obx(() => controller.isLoading.value
+        ? const CircularProgressIndicator(color: Colors.white)
+        : !controller.isReadOnly.value
+            ? ElevatedButton(
+                onPressed: controller.savePatient,
+                child: const Text("Save Patient", style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              )
+            : const SizedBox());
   }
 
   Widget _buildModernTextField(
@@ -395,6 +521,7 @@ class InputScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.symmetric(vertical: 15),
+              minimumSize: const Size(double.infinity, 50),
             ),
           ),
         if (controller.showTreatmentInputs.value && !controller.isReadOnly.value) ...[
@@ -503,6 +630,7 @@ class InputScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 15),
+                    minimumSize: const Size(double.infinity, 50),
                   ),
                 ),
               ],

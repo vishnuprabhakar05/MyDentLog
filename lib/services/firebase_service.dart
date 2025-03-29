@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:my_dentlog_app/models/settings_model.dart';
 import '../models/patient_model.dart';
@@ -6,18 +7,17 @@ import '../models/lab_model.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../firebase_options.dart';
 import 'package:image_picker/image_picker.dart';
-
+import 'google_drive_service.dart';
+import 'package:flutter/foundation.dart'; // For kDebugMode
 class FirebaseService {
   static final DatabaseReference database = FirebaseDatabase.instance.ref();
 
-  
   static Future<void> initializeFirebase() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
 
-  
   static Future<UserModel?> getUserByEmail(String emailOrStaffId) async {
     try {
       DatabaseEvent event =
@@ -33,7 +33,6 @@ class FirebaseService {
     return null;
   }
 
-  
   static Future<bool> createUser(UserModel user) async {
     try {
       String key = user.email.replaceAll('.', '_');
@@ -46,7 +45,6 @@ class FirebaseService {
     }
   }
 
-  
   static Future<List<PatientModel>> getPatients() async {
     try {
       DatabaseEvent event = await database.child('patient_details').once();
@@ -71,7 +69,6 @@ class FirebaseService {
     return [];
   }
 
-  
   static Future<PatientModel?> getPatientByOpNo(String opNo) async {
     try {
       DatabaseEvent event = await database.child('patient_details').child(opNo).once();
@@ -86,7 +83,6 @@ class FirebaseService {
     return null;
   }
 
-  
   static Future<void> addOrUpdatePatient(PatientModel patient) async {
     try {
       await database.child('patient_details').child(patient.opNo).set(patient.toMap());
@@ -95,19 +91,24 @@ class FirebaseService {
     }
   }
 
-  
   static Future<String?> uploadCaseSheet(XFile file) async {
-    try {
-      
-      String downloadUrl = "uploaded_file_url"; 
-      return downloadUrl;
-    } catch (e) {
-      print("File upload error: $e");
-      return null;
+  try {
+    if (kIsWeb) {
+      // For web, we can pass the XFile directly
+      return await GoogleDriveService.uploadFile(file);
+    } else {
+      // For mobile, convert to File
+      final File convertedFile = File(file.path);
+      return await GoogleDriveService.uploadFile(convertedFile);
     }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error uploading case sheet: $e');
+    }
+    rethrow;
   }
+}
 
-  
   static Future<void> addTreatmentHistory(String opNo, String date, String details) async {
     try {
       await database.child('patient_details').child(opNo).child('TREATMENT_HISTORY').update({
@@ -118,34 +119,31 @@ class FirebaseService {
     }
   }
 
-  
   static Future<List<UserModel>> getUsers() async {
-  try {
-    DatabaseEvent event = await database.child('users').once();
-    DataSnapshot snapshot = event.snapshot;
+    try {
+      DatabaseEvent event = await database.child('users').once();
+      DataSnapshot snapshot = event.snapshot;
 
-    if (snapshot.value is Map) {
-      Map<String, dynamic> data = Map<String, dynamic>.from(snapshot.value as Map);
+      if (snapshot.value is Map) {
+        Map<String, dynamic> data = Map<String, dynamic>.from(snapshot.value as Map);
 
-      return data.entries.map((entry) {
-        Map<String, dynamic> userData = Map<String, dynamic>.from(entry.value);
-
-        
-        return UserModel(
-          name: userData['name'] ?? '',
-          email: userData['email'] ?? '',
-          role: userData['role'] ?? 'staff', // Default role if missing
-          admin: (userData['admin'] is bool) ? userData['admin'] : false, // Ensure boolean
-        );
-      }).toList();
+        return data.entries.map((entry) {
+          Map<String, dynamic> userData = Map<String, dynamic>.from(entry.value);
+          
+          return UserModel(
+            name: userData['name'] ?? '',
+            email: userData['email'] ?? '',
+            role: userData['role'] ?? 'staff',
+            admin: (userData['admin'] is bool) ? userData['admin'] : false,
+          );
+        }).toList();
+      }
+    } catch (e) {
+      print('Error fetching users: $e');
     }
-  } catch (e) {
-    print('Error fetching users: $e');
+    return [];
   }
-  return [];
-}
 
-  
   static Future<bool> updateUser(String email, UserModel updatedUser) async {
     try {
       String key = email.replaceAll('.', '_');
@@ -158,7 +156,6 @@ class FirebaseService {
     }
   }
 
-  
   static Future<bool> deleteUser(String email) async {
     try {
       String key = email.replaceAll('.', '_');
@@ -172,32 +169,30 @@ class FirebaseService {
   }
 
   Future<void> addLab(LabModel lab) async {
-  DatabaseReference ref = database.child("lab_details").push();
-  await ref.set({
-    "labId": ref.key,
-    "labName": lab.labName,
-    "phone": lab.phone ?? "",
-    "location": lab.location ?? "",
-    "workTypes": lab.workTypes, 
-  });
-}
+    DatabaseReference ref = database.child("lab_details").push();
+    await ref.set({
+      "labId": ref.key,
+      "labName": lab.labName,
+      "phone": lab.phone ?? "",
+      "location": lab.location ?? "",
+      "workTypes": lab.workTypes, 
+    });
+  }
 
-  
   Future<void> updateLab(LabModel lab) async {
-  await database.child("lab_details").child(lab.labId!).update({
-    "labName": lab.labName,
-    "phone": lab.phone ?? "",
-    "location": lab.location ?? "",
-    "workTypes": lab.workTypes, 
-  });
-}
+    await database.child("lab_details").child(lab.labId!).update({
+      "labName": lab.labName,
+      "phone": lab.phone ?? "",
+      "location": lab.location ?? "",
+      "workTypes": lab.workTypes, 
+    });
+  }
 
   Future<void> deleteLab(String labId) async {
     await database.child("lab_details/$labId").remove();
   }
 
-  
-   Future<List<LabModel>> getLabs() async {
+  Future<List<LabModel>> getLabs() async {
     DataSnapshot snapshot = await database.child("lab_details").get();
     if (snapshot.exists) {
       Map<dynamic, dynamic> labsMap = snapshot.value as Map<dynamic, dynamic>;
@@ -212,7 +207,7 @@ class FirebaseService {
     if (snapshot.exists) {
       return SettingsModel.fromMap(snapshot.value as Map<dynamic, dynamic>);
     }
-    return SettingsModel(googleDriveLink: ""); // Default values if not found
+    return SettingsModel(googleDriveLink: "");
   }
 
   // Update settings in Firebase
