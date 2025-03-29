@@ -6,33 +6,37 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.5.3
+  sdk: '>=3.5.3 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  firebase_core: ^3.12.1
-  firebase_database: ^11.3.4
+  
+  # Updated Firebase packages
+  firebase_core: ^2.15.0
+  firebase_auth: ^4.9.0
+  firebase_database: ^10.0.0
+  
+  # Google services
+  google_sign_in: ^6.1.0
+  googleapis: ^12.0.0
+  googleapis_auth: ^1.6.0
+  extension_google_sign_in_as_googleapis_auth: ^2.0.12
+  
+  # Other dependencies
   url_launcher: ^6.3.1
-  google_sign_in: ^6.2.2  # 🔹 Required for Google Authentication
-  googleapis: ^12.0.0  # 🔹 Google APIs, including Drive
-  googleapis_auth: ^1.4.0  # 🔹 Authentication for Google APIs
-  http: ^1.2.0  # 🔹 Required for network requests
+  http: ^1.2.0
   file_picker: ^9.2.1
-  firebase_auth: ^5.5.1
   provider: ^6.1.2
   uuid: ^4.5.1
-  image_picker: ^1.1.2
+  image_picker: ^0.8.9
   get: ^4.7.2
-  extension_google_sign_in_as_googleapis_auth: ^2.0.0
-  path_provider: ^2.0.14
-  mime: ^1.0.4
-  permission_handler: ^10.4.0
+  path_provider: ^2.1.5
+  mime: ^1.0.6
+  permission_handler: ^10.4.5
   google_api_availability: ^5.0.1
-
-
-
+  device_info_plus: ^9.1.2
 
 dev_dependencies:
   flutter_test:
@@ -42,4 +46,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - lib/assets/lab_work_type.json  
+    - lib/assets/lab_work_type.json

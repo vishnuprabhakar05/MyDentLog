@@ -1,16 +1,17 @@
-import 'dart:io'; // Add this import
-import 'dart:ui';
+import 'dart:io';
+import 'dart:ui'; 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:google_api_availability/google_api_availability.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/patient_model.dart';
 import '../models/lab_model.dart';
 import '../services/firebase_service.dart';
 import 'search_screen.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';  // Add this import for PlatformException
+import 'package:flutter/foundation.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class InputController extends GetxController {
   final formKey = GlobalKey<FormState>();
@@ -83,45 +84,89 @@ class InputController extends GetxController {
     selectedWorkType.value = null;
   }
 
-  Future<bool> _checkAndroidPermissions() async {
-  if (!Platform.isAndroid) return true;
-  
-  try {
-    // Check Google Play Services availability
-    final googleApiAvailability = GoogleApiAvailability.instance;
-    final status = await googleApiAvailability.checkGooglePlayServicesAvailability();
+ Future<bool> _checkAndroidPermissions() async {
+    if (!Platform.isAndroid) return true;
     
-    if (status != 0) {  // 0 means SERVICE_AVAILABLE
-      // This just shows the dialog to users - it doesn't return a value
-      await googleApiAvailability.makeGooglePlayServicesAvailable();
-      
-      // Check status again after user attempts to resolve
-      final newStatus = await googleApiAvailability.checkGooglePlayServicesAvailability();
-      return newStatus == 0;
-    }
+    try {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
 
-    // Check storage permissions
-    final permissionStatus = await Permission.storage.request();
-    return permissionStatus.isGranted;
-    
-  } on PlatformException catch (e) {
-    Get.snackbar(
-      "Error", 
-      "Permission check failed: ${e.message}",
-      backgroundColor: Colors.red,
-      snackPosition: SnackPosition.BOTTOM,
-    );
-    return false;
+      // Android 13+ permissions
+      if (sdkInt >= 33) {
+        final photosStatus = await Permission.photos.status;
+        if (!photosStatus.isGranted) {
+          final result = await Permission.photos.request();
+          if (!result.isGranted) {
+            _showPermissionRationale("Photos");
+            return false;
+          }
+        }
+        return true;
+      }
+      // Android 10-12 permissions
+      else if (sdkInt >= 29) {
+        final storageStatus = await Permission.storage.status;
+        if (!storageStatus.isGranted) {
+          final result = await Permission.storage.request();
+          if (!result.isGranted) {
+            _showPermissionRationale("Storage");
+            return false;
+          }
+        }
+        return true;
+      }
+      // Legacy Android (5.0-9)
+      else {
+        return true; // No special permissions needed
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Permission check failed");
+      return false;
+    }
   }
+
+  void _showPermissionRationale(String permission) {
+    Get.defaultDialog(
+      title: "Permission Required",
+      middleText: "MyDentLog needs $permission permission to upload case sheets",
+      textConfirm: "Open Settings",
+      onConfirm: () async {
+        Get.back();
+        await openAppSettings();
+      },
+      textCancel: "Cancel",
+    );
+  }
+
+Future<bool> _requestPermissions() async {
+  final status = await Permission.storage.request();
+  if (status.isGranted) {
+    return true;
+  } else if (status.isPermanentlyDenied) {
+    // Show dialog to open app settings
+    Get.defaultDialog(
+      title: "Permission Required",
+      middleText: "Please enable storage permission in app settings",
+      textConfirm: "Open Settings",
+      onConfirm: () async {
+        Get.back();
+        await openAppSettings();
+      },
+      textCancel: "Cancel",
+    );
+  }
+  return false;
 }
 
-void pickFile() async {
+  void pickFile() async {
   if (isReadOnly.value) return;
   
   try {
-    // Check permissions on Android
-    if (!kIsWeb && Platform.isAndroid && !await _checkAndroidPermissions()) {
-      return;
+    if (!kIsWeb && Platform.isAndroid) {
+      final hasPermission = await _checkAndroidPermissions();
+      if (!hasPermission) {
+        return;
+      }
     }
 
     final ImagePicker picker = ImagePicker();
@@ -174,6 +219,74 @@ void pickFile() async {
     );
   }
 }
+
+  void viewImage() async {
+    if (caseSheetUrl.value == null || caseSheetUrl.value!.isEmpty) {
+      Get.snackbar(
+        "Error",
+        "No case sheet available",
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    try {
+      final Uri url = Uri.parse(caseSheetUrl.value!);
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        Get.to(() => DriveImageViewer(imageUrl: caseSheetUrl.value!));
+      }
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Could not open the case sheet: ${e.toString()}",
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  void deleteImage() async {
+    if (caseSheetUrl.value == null || caseSheetUrl.value!.isEmpty) {
+      Get.snackbar(
+        "Error",
+        "No image to delete",
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+    
+    Get.defaultDialog(
+      title: "Confirm Delete",
+      middleText: "Are you sure you want to delete this image?",
+      textConfirm: "Delete",
+      textCancel: "Cancel",
+      confirmTextColor: Colors.white,
+      onConfirm: () async {
+        Get.back();
+        isLoading.value = true;
+        try {
+          caseSheetUrl.value = null;
+          Get.snackbar(
+            "Success",
+            "Image deleted successfully",
+            backgroundColor: Colors.green,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        } catch (e) {
+          Get.snackbar(
+            "Error",
+            "Failed to delete image: ${e.toString()}",
+            backgroundColor: Colors.red,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        } finally {
+          isLoading.value = false;
+        }
+      },
+    );
+  }
 
   void toggleTreatmentInputs() {
     if (isReadOnly.value) return;
@@ -296,6 +409,87 @@ void pickFile() async {
   }
 }
 
+class DriveImageViewer extends StatelessWidget {
+  final String imageUrl;
+
+  const DriveImageViewer({Key? key, required this.imageUrl}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.open_in_browser),
+            onPressed: () async {
+              final Uri url = Uri.parse(imageUrl);
+              if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+                Get.snackbar(
+                  "Error",
+                  "Could not launch the URL",
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              }
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          panEnabled: true,
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Image.network(
+            _getDirectImageUrl(imageUrl),
+            fit: BoxFit.contain,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded / 
+                        loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, color: Colors.red, size: 50),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Could not load image",
+                    style: TextStyle(color: Colors.white.withOpacity(0.8)),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => launchUrl(Uri.parse(imageUrl), 
+                        mode: LaunchMode.externalApplication),
+                    child: const Text("Open in Browser"),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getDirectImageUrl(String driveUrl) {
+    if (driveUrl.contains("drive.google.com")) {
+      final fileId = driveUrl.split('/d/')[1].split('/')[0];
+      return "https://drive.google.com/uc?export=view&id=$fileId";
+    }
+    return driveUrl;
+  }
+}
+
 class InputScreen extends StatelessWidget {
   final InputController controller = Get.put(InputController());
 
@@ -381,7 +575,7 @@ class InputScreen extends StatelessWidget {
                               controller.isReadOnly.value,
                             ),
                             const SizedBox(height: 20),
-                            _buildUploadButton(),
+                            _buildUploadSection(),
                             const SizedBox(height: 20),
                             _buildTreatmentSection(theme),
                             const SizedBox(height: 20),
@@ -400,54 +594,117 @@ class InputScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUploadButton() {
-    return Obx(() => !controller.isReadOnly.value
-        ? Column(
+  Widget _buildUploadSection() {
+    return Obx(() => Column(
+      children: [
+        if (controller.caseSheetUrl.value != null && controller.caseSheetUrl.value!.isNotEmpty)
+          Column(
             children: [
-              ElevatedButton(
-                onPressed: controller.isUploading.value ? null : controller.pickFile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: controller.isUploading.value 
-                      ? Colors.blue.shade400 
-                      : Colors.blue.shade700,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (controller.isUploading.value)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white),
-                      )
-                    else
-                      const Icon(Icons.upload, color: Colors.white),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (!controller.isReadOnly.value) ...[
+                    ElevatedButton.icon(
+                      onPressed: controller.pickFile,
+                      icon: const Icon(Icons.edit, size: 20),
+                      label: const Text("Change"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade600,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Text(
-                      controller.isUploading.value 
-                          ? "Uploading..." 
-                          : "Upload Case Sheet",
-                      style: const TextStyle(color: Colors.white),
+                    ElevatedButton.icon(
+                      onPressed: controller.deleteImage,
+                      icon: const Icon(Icons.delete, size: 20),
+                      label: const Text("Delete"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      ),
                     ),
                   ],
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: controller.viewImage,
+                    icon: const Icon(Icons.visibility, size: 20),
+                    label: const Text("View"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "Case Sheet Uploaded",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 14,
                 ),
               ),
-              if (controller.showUploadSuccess.value)
-                const Padding(
-                  padding: EdgeInsets.only(top: 10),
-                  child: Text(
-                    "File uploaded to Google Drive",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ),
+              const SizedBox(height: 20),
             ],
-          )
-        : const SizedBox());
+          ),
+        if (!controller.isReadOnly.value) ...[
+          ElevatedButton(
+            onPressed: controller.isUploading.value ? null : controller.pickFile,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: controller.isUploading.value 
+                  ? Colors.blue.shade400 
+                  : Colors.blue.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              minimumSize: const Size(double.infinity, 50),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (controller.isUploading.value)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                else
+                  const Icon(Icons.upload, color: Colors.white),
+                const SizedBox(width: 10),
+                Text(
+                  controller.isUploading.value 
+                      ? "Uploading..." 
+                      : "Upload Case Sheet",
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+          if (controller.showUploadSuccess.value)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: Text(
+                "File uploaded to Google Drive",
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+        ],
+      ],
+    ));
   }
 
   Widget _buildSaveButton() {

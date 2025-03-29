@@ -93,13 +93,27 @@ class FirebaseService {
 
   static Future<String?> uploadCaseSheet(XFile file) async {
   try {
+    // Get the configured Google Drive folder ID from settings
+    final settings = await getGoogleDriveLinkFromSettings();
+    
+    if (settings.googleDriveLink.isEmpty) {
+      throw Exception('Google Drive folder not configured in settings');
+    }
+
+    // Extract the folder ID from the Google Drive link
+    final folderId = _extractFolderIdFromUrl(settings.googleDriveLink);
+    
+    if (folderId == null) {
+      throw Exception('Invalid Google Drive folder URL in settings');
+    }
+
     if (kIsWeb) {
-      // For web, we can pass the XFile directly
-      return await GoogleDriveService.uploadFile(file);
+      // For web, pass the XFile directly
+      return await GoogleDriveService.uploadFile(file, folderId: folderId);
     } else {
       // For mobile, convert to File
       final File convertedFile = File(file.path);
-      return await GoogleDriveService.uploadFile(convertedFile);
+      return await GoogleDriveService.uploadFile(convertedFile, folderId: folderId);
     }
   } catch (e) {
     if (kDebugMode) {
@@ -108,6 +122,36 @@ class FirebaseService {
     rethrow;
   }
 }
+
+// Helper method to extract folder ID from Google Drive URL
+static String? _extractFolderIdFromUrl(String url) {
+  try {
+    // Handle URL with or without protocol
+    String cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http')) {
+      cleanUrl = 'https://$cleanUrl';
+    }
+
+    final uri = Uri.parse(cleanUrl);
+    
+    // Handle different Google Drive URL formats
+    if (uri.pathSegments.contains('folders')) {
+      // Example: https://drive.google.com/drive/folders/1cMBWeY2ZoiMUzmAfSNsL0eRK6peE3-sd?usp=drive_link
+      return uri.pathSegments.last;
+    }
+    
+    // If it's just the ID (last resort)
+    final idMatch = RegExp(r'[-\w]{25,}').firstMatch(url);
+    if (idMatch != null) {
+      return idMatch.group(0);
+    }
+    
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 
   static Future<void> addTreatmentHistory(String opNo, String date, String details) async {
     try {
