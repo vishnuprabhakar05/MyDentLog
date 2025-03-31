@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "718241966892-jfp5vo5drrvj7f6ecc7kb3o4elbth5vu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.mydentlog",
+            "certificate_hash": "97e40a2c88ff0830d2aaa56659923cf7f90dda8e"
+          }
+        },
+        {
           "client_id": "718241966892-lb810p6u2pn2ibr2kijtfisr7o4dused.apps.googleusercontent.com",
           "client_type": 3
         }
