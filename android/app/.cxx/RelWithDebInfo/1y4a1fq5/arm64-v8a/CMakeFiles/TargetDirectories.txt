@@ -1,0 +1,2 @@
+/Users/vishnuprabhakar05/Documents/MyDentLog/MYDENTLOG/MyDentLog/android/app/.cxx/RelWithDebInfo/1y4a1fq5/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/vishnuprabhakar05/Documents/MyDentLog/MYDENTLOG/MyDentLog/android/app/.cxx/RelWithDebInfo/1y4a1fq5/arm64-v8a/CMakeFiles/rebuild_cache.dir

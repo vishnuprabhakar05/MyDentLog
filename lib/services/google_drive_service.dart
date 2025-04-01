@@ -10,7 +10,7 @@ import 'package:flutter/services.dart';
 class GoogleDriveService {
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [drive.DriveApi.driveFileScope],
-    //clientId: '718241966892-jfp5vo5drrvj7f6ecc7kb3o4elbth5vu.apps.googleusercontent.com',
+    //clientId: AuthConfig.getClientId(),
     hostedDomain: '',
     signInOption: SignInOption.standard,
   );
