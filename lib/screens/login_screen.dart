@@ -50,7 +50,7 @@ class LoginScreen extends StatelessWidget {
                         "MyDentLog",
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Color.fromRGBO(76, 175, 80, 1),
+                          color: Color.fromRGBO(245, 247, 245, 1),
                         ),
                       ),
                       SizedBox(height: 20),

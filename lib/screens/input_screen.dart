@@ -22,13 +22,16 @@ class InputController extends GetxController {
   final treatmentController = TextEditingController();
 
   var caseSheetUrl = RxnString();
+  var iopaSheetUrl = RxnString();
   var isLoading = false.obs;
   var showTreatmentInputs = false.obs;
   var treatmentHistory = <String, Map<String, String>>{}.obs;
   var isReadOnly = false.obs;
   var includeLabDetails = false.obs;
-  var showUploadSuccess = false.obs; 
+  var showUploadSuccess = false.obs;
+  var showIopaUploadSuccess = false.obs;
   var isUploading = false.obs;
+  var isUploadingIopa = false.obs;
 
   final FirebaseService _firebaseService = FirebaseService();
 
@@ -47,6 +50,7 @@ class InputController extends GetxController {
 
   void _initializeFromArguments() {
     showUploadSuccess.value = false;
+    showIopaUploadSuccess.value = false;
     final arguments = Get.arguments;
     if (arguments != null) {
       final PatientModel? patient = arguments['patient'];
@@ -58,6 +62,7 @@ class InputController extends GetxController {
         phoneController.text = patient.phone ?? '';
         placeController.text = patient.place ?? '';
         caseSheetUrl.value = patient.caseSheet;
+        iopaSheetUrl.value = patient.iopa;
         
         if (patient.treatmentHistory != null) {
           treatmentHistory.value = patient.treatmentHistory!;
@@ -84,48 +89,46 @@ class InputController extends GetxController {
     selectedWorkType.value = null;
   }
 
- Future<bool> _checkAndroidPermissions() async {
-  if (!Platform.isAndroid) return true;
-  
-  try {
-    final androidInfo = await DeviceInfoPlugin().androidInfo;
-    final sdkInt = androidInfo.version.sdkInt;
+  Future<bool> _checkAndroidPermissions() async {
+    if (!Platform.isAndroid) return true;
+    
+    try {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
 
-    // Request camera permission
-    final cameraStatus = await Permission.camera.status;
-    if (!cameraStatus.isGranted) {
-      final result = await Permission.camera.request();
-      if (!result.isGranted) {
-        _showPermissionRationale("Camera");
-        return false;
+      final cameraStatus = await Permission.camera.status;
+      if (!cameraStatus.isGranted) {
+        final result = await Permission.camera.request();
+        if (!result.isGranted) {
+          _showPermissionRationale("Camera");
+          return false;
+        }
       }
-    }
 
-    // Existing storage permission logic (keep this)
-    if (sdkInt >= 33) {
-      final photosStatus = await Permission.photos.status;
-      if (!photosStatus.isGranted) {
-        final result = await Permission.photos.request();
-        if (!result.isGranted) return false;
+      if (sdkInt >= 33) {
+        final photosStatus = await Permission.photos.status;
+        if (!photosStatus.isGranted) {
+          final result = await Permission.photos.request();
+          if (!result.isGranted) return false;
+        }
+      } else if (sdkInt >= 29) {
+        final storageStatus = await Permission.storage.status;
+        if (!storageStatus.isGranted) {
+          final result = await Permission.storage.request();
+          if (!result.isGranted) return false;
+        }
       }
-    } else if (sdkInt >= 29) {
-      final storageStatus = await Permission.storage.status;
-      if (!storageStatus.isGranted) {
-        final result = await Permission.storage.request();
-        if (!result.isGranted) return false;
-      }
+      return true;
+    } catch (e) {
+      Get.snackbar("Error", "Permission check failed");
+      return false;
     }
-    return true;
-  } catch (e) {
-    Get.snackbar("Error", "Permission check failed");
-    return false;
   }
-}
 
   void _showPermissionRationale(String permission) {
     Get.defaultDialog(
       title: "Permission Required",
-      middleText: "MyDentLog needs $permission permission to upload case sheets",
+      middleText: "MyDentLog needs $permission permission",
       textConfirm: "Open Settings",
       onConfirm: () async {
         Get.back();
@@ -134,163 +137,195 @@ class InputController extends GetxController {
       textCancel: "Cancel",
     );
   }
-
-Future<bool> _requestPermissions() async {
-  final status = await Permission.storage.request();
-  if (status.isGranted) {
-    return true;
-  } else if (status.isPermanentlyDenied) {
-    // Show dialog to open app settings
-    Get.defaultDialog(
-      title: "Permission Required",
-      middleText: "Please enable storage permission in app settings",
-      textConfirm: "Open Settings",
-      onConfirm: () async {
-        Get.back();
-        await openAppSettings();
-      },
-      textCancel: "Cancel",
-    );
-  }
-  return false;
-}
 
   void pickFile() async {
-  if (isReadOnly.value) return;
-  
-  try {
-    if (!kIsWeb && Platform.isAndroid) {
-      final hasPermission = await _checkAndroidPermissions();
-      if (!hasPermission) return;
-    }
-
-    // Show option dialog (Camera or Gallery)
-    final ImageSource? source = await Get.bottomSheet<ImageSource>(
-      SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.blue),
-              title: const Text('Take Photo'),
-              onTap: () => Get.back(result: ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.blue),
-              title: const Text('Choose from Gallery'),
-              onTap: () => Get.back(result: ImageSource.gallery),
-            ),
-            ListTile(
-              leading: const Icon(Icons.cancel, color: Colors.red),
-              title: const Text('Cancel'),
-              onTap: () => Get.back(),
-            ),
-          ],
-        ),
-      ),
-      backgroundColor: Colors.white,
-    );
-
-    if (source == null) return; // User canceled
-
-    final ImagePicker picker = ImagePicker();
-    final XFile? file = await picker.pickImage(
-      source: source, 
-      maxWidth: 1920,
-      maxHeight: 1080,
-      imageQuality: 90,
-    );
-
-    if (file != null) {
-      isUploading.value = true;
-      try {
-        final String? uploadedUrl = await FirebaseService.uploadCaseSheet(file);
-        caseSheetUrl.value = uploadedUrl;
-        showUploadSuccess.value = uploadedUrl != null;
-
-        if (uploadedUrl == null) {
-          Get.snackbar("Error", "File upload failed", 
-              backgroundColor: Colors.red);
-        } else {
-          Get.snackbar("Success", "File uploaded successfully!", 
-              backgroundColor: Colors.green);
-        }
-      } catch (e) {
-        Get.snackbar("Error", "Upload failed: ${e.toString()}", 
-            backgroundColor: Colors.red);
-      } finally {
-        isUploading.value = false;
+    if (isReadOnly.value) return;
+    
+    try {
+      if (!kIsWeb && Platform.isAndroid) {
+        final hasPermission = await _checkAndroidPermissions();
+        if (!hasPermission) return;
       }
-    }
-  } catch (e) {
-    Get.snackbar("Error", "Failed to pick file: ${e.toString()}", 
-        backgroundColor: Colors.red);
-  }
-}
 
-  void viewImage() async {
-    if (caseSheetUrl.value == null || caseSheetUrl.value!.isEmpty) {
-      Get.snackbar(
-        "Error",
-        "No case sheet available",
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
+      final ImageSource? source = await Get.bottomSheet<ImageSource>(
+        SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.blue),
+                title: const Text('Take Photo'),
+                onTap: () => Get.back(result: ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.blue),
+                title: const Text('Choose from Gallery'),
+                onTap: () => Get.back(result: ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.cancel, color: Colors.red),
+                title: const Text('Cancel'),
+                onTap: () => Get.back(),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: Colors.white,
       );
+
+      if (source == null) return;
+
+      final ImagePicker picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 90,
+      );
+
+      if (file != null) {
+        isUploading.value = true;
+        try {
+          final String? uploadedUrl = await FirebaseService.uploadCaseSheet(file);
+          caseSheetUrl.value = uploadedUrl;
+          showUploadSuccess.value = uploadedUrl != null;
+
+          if (uploadedUrl == null) {
+            Get.snackbar("Error", "File upload failed", backgroundColor: Colors.red);
+          } else {
+            Get.snackbar("Success", "Case Sheet uploaded!", backgroundColor: Colors.green);
+          }
+        } catch (e) {
+          Get.snackbar("Error", "Upload failed: ${e.toString()}", backgroundColor: Colors.red);
+        } finally {
+          isUploading.value = false;
+        }
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Failed to pick file: ${e.toString()}", backgroundColor: Colors.red);
+    }
+  }
+
+  void pickIopaFile() async {
+    if (isReadOnly.value) return;
+    
+    try {
+      if (!kIsWeb && Platform.isAndroid) {
+        final hasPermission = await _checkAndroidPermissions();
+        if (!hasPermission) return;
+      }
+
+      final ImageSource? source = await Get.bottomSheet<ImageSource>(
+        SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.blue),
+                title: const Text('Take IOPA Photo'),
+                onTap: () => Get.back(result: ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.blue),
+                title: const Text('Choose IOPA from Gallery'),
+                onTap: () => Get.back(result: ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.cancel, color: Colors.red),
+                title: const Text('Cancel'),
+                onTap: () => Get.back(),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: Colors.white,
+      );
+
+      if (source == null) return;
+
+      final ImagePicker picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 90,
+      );
+
+      if (file != null) {
+        isUploadingIopa.value = true;
+        try {
+          final String? uploadedUrl = await FirebaseService.uploadCaseSheet(file);
+          iopaSheetUrl.value = uploadedUrl;
+          showIopaUploadSuccess.value = uploadedUrl != null;
+
+          if (uploadedUrl == null) {
+            Get.snackbar("Error", "IOPA upload failed", backgroundColor: Colors.red);
+          } else {
+            Get.snackbar("Success", "IOPA uploaded!", backgroundColor: Colors.green);
+          }
+        } catch (e) {
+          Get.snackbar("Error", "IOPA upload failed: ${e.toString()}", backgroundColor: Colors.red);
+        } finally {
+          isUploadingIopa.value = false;
+        }
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Failed to pick IOPA: ${e.toString()}", backgroundColor: Colors.red);
+    }
+  }
+
+  void viewImage(String url) async {
+    if (url.isEmpty) {
+      Get.snackbar("Error", "No image available", backgroundColor: Colors.red);
       return;
     }
 
     try {
-      final Uri url = Uri.parse(caseSheetUrl.value!);
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        Get.to(() => DriveImageViewer(imageUrl: caseSheetUrl.value!));
+      final Uri uri = Uri.parse(url);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        Get.to(() => DriveImageViewer(imageUrl: url));
       }
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Could not open the case sheet: ${e.toString()}",
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      Get.snackbar("Error", "Could not open image: ${e.toString()}", backgroundColor: Colors.red);
     }
   }
 
-  void deleteImage() async {
+  void deleteImage() {
     if (caseSheetUrl.value == null || caseSheetUrl.value!.isEmpty) {
-      Get.snackbar(
-        "Error",
-        "No image to delete",
-        backgroundColor: Colors.red,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      Get.snackbar("Error", "No image to delete", backgroundColor: Colors.red);
       return;
     }
     
     Get.defaultDialog(
       title: "Confirm Delete",
-      middleText: "Are you sure you want to delete this image?",
+      middleText: "Delete this case sheet?",
       textConfirm: "Delete",
       textCancel: "Cancel",
       confirmTextColor: Colors.white,
-      onConfirm: () async {
+      onConfirm: () {
         Get.back();
-        isLoading.value = true;
-        try {
-          caseSheetUrl.value = null;
-          Get.snackbar(
-            "Success",
-            "Image deleted successfully",
-            backgroundColor: Colors.green,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        } catch (e) {
-          Get.snackbar(
-            "Error",
-            "Failed to delete image: ${e.toString()}",
-            backgroundColor: Colors.red,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        } finally {
-          isLoading.value = false;
-        }
+        caseSheetUrl.value = null;
+        showUploadSuccess.value = false;
+        Get.snackbar("Success", "Case sheet deleted", backgroundColor: Colors.green);
+      },
+    );
+  }
+
+  void deleteIopaImage() {
+    if (iopaSheetUrl.value == null || iopaSheetUrl.value!.isEmpty) {
+      Get.snackbar("Error", "No IOPA to delete", backgroundColor: Colors.red);
+      return;
+    }
+    
+    Get.defaultDialog(
+      title: "Confirm Delete",
+      middleText: "Delete this IOPA?",
+      textConfirm: "Delete",
+      textCancel: "Cancel",
+      confirmTextColor: Colors.white,
+      onConfirm: () {
+        Get.back();
+        iopaSheetUrl.value = null;
+        showIopaUploadSuccess.value = false;
+        Get.snackbar("Success", "IOPA deleted", backgroundColor: Colors.green);
       },
     );
   }
@@ -383,6 +418,7 @@ Future<bool> _requestPermissions() async {
         phone: phoneController.text.trim(),
         place: placeController.text.trim(),
         caseSheet: caseSheetUrl.value ?? existingPatient?.caseSheet ?? '',
+        iopa: iopaSheetUrl.value ?? existingPatient?.iopa ?? '',
         timestamp: DateTime.now().toIso8601String(),
         treatmentHistory: updatedHistory.map((key, value) => MapEntry(key, Map<String, String>.from(value))), 
       );
@@ -584,6 +620,8 @@ class InputScreen extends StatelessWidget {
                             const SizedBox(height: 20),
                             _buildUploadSection(),
                             const SizedBox(height: 20),
+                            _buildIopaUploadSection(),
+                            const SizedBox(height: 20),
                             _buildTreatmentSection(theme),
                             const SizedBox(height: 20),
                             _buildSaveButton(),
@@ -642,7 +680,7 @@ class InputScreen extends StatelessWidget {
                   ],
                   const SizedBox(width: 10),
                   ElevatedButton.icon(
-                    onPressed: controller.viewImage,
+                    onPressed: () => controller.viewImage(controller.caseSheetUrl.value!),
                     icon: const Icon(Icons.visibility, size: 20),
                     label: const Text("View"),
                     style: ElevatedButton.styleFrom(
@@ -705,7 +743,120 @@ class InputScreen extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.only(top: 10),
               child: Text(
-                "File uploaded to Google Drive",
+                "Case Sheet uploaded to Google Drive",
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+        ],
+      ],
+    ));
+  }
+
+  Widget _buildIopaUploadSection() {
+    return Obx(() => Column(
+      children: [
+        if (controller.iopaSheetUrl.value != null && controller.iopaSheetUrl.value!.isNotEmpty)
+          Column(
+            children: [
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (!controller.isReadOnly.value) ...[
+                    ElevatedButton.icon(
+                      onPressed: controller.pickIopaFile,
+                      icon: const Icon(Icons.edit, size: 20),
+                      label: const Text("Change"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade600,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      onPressed: controller.deleteIopaImage,
+                      icon: const Icon(Icons.delete, size: 20),
+                      label: const Text("Delete"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: () => controller.viewImage(controller.iopaSheetUrl.value!),
+                    icon: const Icon(Icons.visibility, size: 20),
+                    label: const Text("View"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "IOPA Uploaded",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        if (!controller.isReadOnly.value) ...[
+          ElevatedButton(
+            onPressed: controller.isUploadingIopa.value ? null : controller.pickIopaFile,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: controller.isUploadingIopa.value 
+                  ? Colors.orange.shade400 
+                  : Colors.orange.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              minimumSize: const Size(double.infinity, 50),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (controller.isUploadingIopa.value)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                else
+                  const Icon(Icons.upload, color: Colors.white),
+                const SizedBox(width: 10),
+                Text(
+                  controller.isUploadingIopa.value 
+                      ? "Uploading..." 
+                      : "Upload IOPA",
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+          if (controller.showIopaUploadSuccess.value)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: Text(
+                "IOPA uploaded to Google Drive",
                 style: TextStyle(color: Colors.white70),
               ),
             ),

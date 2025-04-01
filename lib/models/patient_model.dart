@@ -4,6 +4,7 @@ class PatientModel {
   String phone;
   String place;
   String caseSheet;
+  String iopa; // New field for IOPA
   String timestamp;
   Map<String, Map<String, String>>? treatmentHistory; 
 
@@ -13,6 +14,7 @@ class PatientModel {
     required this.phone,
     required this.place,
     required this.caseSheet,
+    required this.iopa, // Added to constructor
     required this.timestamp,
     this.treatmentHistory,
   });
@@ -24,6 +26,7 @@ class PatientModel {
       phone: map['PHONE'] ?? '',
       place: map['PLACE'] ?? '',
       caseSheet: map['CASE_SHEET'] ?? '',
+      iopa: map['IOPA_SHEET'] ?? '', // Added to fromMap
       timestamp: map['TIMESTAMP'] ?? '',
       treatmentHistory: map['TREATMENT_HISTORY'] != null
           ? Map<String, Map<String, String>>.from(
@@ -42,6 +45,7 @@ class PatientModel {
       'PHONE': phone,
       'PLACE': place,
       'CASE_SHEET': caseSheet,
+      'IOPA_SHEET': iopa, // Added to toMap
       'TIMESTAMP': timestamp,
       'TREATMENT_HISTORY': treatmentHistory ?? {},
     };

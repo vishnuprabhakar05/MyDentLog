@@ -257,5 +257,5 @@ static String? _extractFolderIdFromUrl(String url) {
   // Update settings in Firebase
   static Future<void> updateSettings(SettingsModel settings) async {
     await database.child("settings").update(settings.toMap());
-  }
+  }  
 }
