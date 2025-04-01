@@ -85,45 +85,42 @@ class InputController extends GetxController {
   }
 
  Future<bool> _checkAndroidPermissions() async {
-    if (!Platform.isAndroid) return true;
-    
-    try {
-      final androidInfo = await DeviceInfoPlugin().androidInfo;
-      final sdkInt = androidInfo.version.sdkInt;
+  if (!Platform.isAndroid) return true;
+  
+  try {
+    final androidInfo = await DeviceInfoPlugin().androidInfo;
+    final sdkInt = androidInfo.version.sdkInt;
 
-      // Android 13+ permissions
-      if (sdkInt >= 33) {
-        final photosStatus = await Permission.photos.status;
-        if (!photosStatus.isGranted) {
-          final result = await Permission.photos.request();
-          if (!result.isGranted) {
-            _showPermissionRationale("Photos");
-            return false;
-          }
-        }
-        return true;
+    // Request camera permission
+    final cameraStatus = await Permission.camera.status;
+    if (!cameraStatus.isGranted) {
+      final result = await Permission.camera.request();
+      if (!result.isGranted) {
+        _showPermissionRationale("Camera");
+        return false;
       }
-      // Android 10-12 permissions
-      else if (sdkInt >= 29) {
-        final storageStatus = await Permission.storage.status;
-        if (!storageStatus.isGranted) {
-          final result = await Permission.storage.request();
-          if (!result.isGranted) {
-            _showPermissionRationale("Storage");
-            return false;
-          }
-        }
-        return true;
-      }
-      // Legacy Android (5.0-9)
-      else {
-        return true; // No special permissions needed
-      }
-    } catch (e) {
-      Get.snackbar("Error", "Permission check failed");
-      return false;
     }
+
+    // Existing storage permission logic (keep this)
+    if (sdkInt >= 33) {
+      final photosStatus = await Permission.photos.status;
+      if (!photosStatus.isGranted) {
+        final result = await Permission.photos.request();
+        if (!result.isGranted) return false;
+      }
+    } else if (sdkInt >= 29) {
+      final storageStatus = await Permission.storage.status;
+      if (!storageStatus.isGranted) {
+        final result = await Permission.storage.request();
+        if (!result.isGranted) return false;
+      }
+    }
+    return true;
+  } catch (e) {
+    Get.snackbar("Error", "Permission check failed");
+    return false;
   }
+}
 
   void _showPermissionRationale(String permission) {
     Get.defaultDialog(
@@ -164,14 +161,40 @@ Future<bool> _requestPermissions() async {
   try {
     if (!kIsWeb && Platform.isAndroid) {
       final hasPermission = await _checkAndroidPermissions();
-      if (!hasPermission) {
-        return;
-      }
+      if (!hasPermission) return;
     }
+
+    // Show option dialog (Camera or Gallery)
+    final ImageSource? source = await Get.bottomSheet<ImageSource>(
+      SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.blue),
+              title: const Text('Take Photo'),
+              onTap: () => Get.back(result: ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.blue),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Get.back(result: ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.cancel, color: Colors.red),
+              title: const Text('Cancel'),
+              onTap: () => Get.back(),
+            ),
+          ],
+        ),
+      ),
+      backgroundColor: Colors.white,
+    );
+
+    if (source == null) return; // User canceled
 
     final ImagePicker picker = ImagePicker();
     final XFile? file = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source, 
       maxWidth: 1920,
       maxHeight: 1080,
       imageQuality: 90,
@@ -185,38 +208,22 @@ Future<bool> _requestPermissions() async {
         showUploadSuccess.value = uploadedUrl != null;
 
         if (uploadedUrl == null) {
-          Get.snackbar(
-            "Error", 
-            "File upload failed",
-            backgroundColor: Colors.red,
-            snackPosition: SnackPosition.BOTTOM,
-          );
+          Get.snackbar("Error", "File upload failed", 
+              backgroundColor: Colors.red);
         } else {
-          Get.snackbar(
-            "Success", 
-            "File uploaded to Google Drive",
-            backgroundColor: Colors.green,
-            snackPosition: SnackPosition.BOTTOM,
-          );
+          Get.snackbar("Success", "File uploaded successfully!", 
+              backgroundColor: Colors.green);
         }
       } catch (e) {
-        Get.snackbar(
-          "Error", 
-          "File upload failed: ${e.toString()}",
-          backgroundColor: Colors.red,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        Get.snackbar("Error", "Upload failed: ${e.toString()}", 
+            backgroundColor: Colors.red);
       } finally {
         isUploading.value = false;
       }
     }
   } catch (e) {
-    Get.snackbar(
-      "Error", 
-      "Failed to pick file: ${e.toString()}",
-      backgroundColor: Colors.red,
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    Get.snackbar("Error", "Failed to pick file: ${e.toString()}", 
+        backgroundColor: Colors.red);
   }
 }
 
