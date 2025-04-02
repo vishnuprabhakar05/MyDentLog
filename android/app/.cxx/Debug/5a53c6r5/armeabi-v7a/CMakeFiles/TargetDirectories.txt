@@ -1,0 +1,2 @@
+/Users/vishnuprabhakar05/Documents/MyDentLog/MYDENTLOG/MyDentLog/android/app/.cxx/Debug/5a53c6r5/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/vishnuprabhakar05/Documents/MyDentLog/MYDENTLOG/MyDentLog/android/app/.cxx/Debug/5a53c6r5/armeabi-v7a/CMakeFiles/rebuild_cache.dir
