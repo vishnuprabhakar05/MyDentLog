@@ -31,13 +31,14 @@ class UserController extends GetxController {
   }
 
   
-  Future<bool> createUser(String name, String email, bool isAdmin, String role) async {
+  Future<bool> createUser(String name, String email, String phone,bool isAdmin, String role) async {
     try {
       UserModel newUser = UserModel(
         name: name,
         email: email,
         admin: isAdmin,
         role: role,
+        phone:phone,
       );
 
       await FirebaseService.database

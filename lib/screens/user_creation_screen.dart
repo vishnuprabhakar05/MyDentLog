@@ -38,7 +38,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     setState(() {
       _filteredUsers = _users.where((user) {
         return user.name.toLowerCase().contains(query) ||
-            user.email.toLowerCase().contains(query);
+            user.email.toLowerCase().contains(query) ||
+            user.phone.toLowerCase().contains(query);
       }).toList();
     });
   }
@@ -46,6 +47,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   void _editUser(UserModel user) {
     TextEditingController nameController = TextEditingController(text: user.name);
     TextEditingController emailController = TextEditingController(text: user.email);
+    TextEditingController phoneController = TextEditingController(text: user.phone);
     String selectedRole = user.role;
     bool isAdmin = user.admin;
 
@@ -60,95 +62,121 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           title: Text("Edit User", style: theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
           content: StatefulBuilder(
             builder: (context, setDialogState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: "Name",
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      style: TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: "Name",
+                        labelStyle: TextStyle(color: Colors.white70),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[800],
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[800],
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  TextField(
-                    controller: emailController,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: "Email/Staff ID",
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: emailController,
+                      style: TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: "Email/Staff ID",
+                        labelStyle: TextStyle(color: Colors.white70),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[800],
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[800],
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: selectedRole,
-                    dropdownColor: Colors.grey[900],
-                    style: TextStyle(color: Colors.white),
-                    items: ["Doctor", "Staff"]
-                        .map((role) => DropdownMenuItem(
-                              value: role,
-                              child: Text(role, style: TextStyle(color: Colors.white)),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null)
-                        setDialogState(() => selectedRole = value);
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Role",
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: phoneController,
+                      style: TextStyle(color: Colors.white),
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: "Phone Number",
+                        labelStyle: TextStyle(color: Colors.white70),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[800],
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[800],
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  SwitchListTile(
-                    title: Text("Admin Privileges", style: TextStyle(color: Colors.white)),
-                    value: isAdmin,
-                    activeColor: Colors.blue,
-                    inactiveTrackColor: Colors.grey,
-                    onChanged: (value) {
-                      setDialogState(() => isAdmin = value!);
-                    },
-                  ),
-                ],
+                    SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedRole,
+                      dropdownColor: Colors.grey[900],
+                      style: TextStyle(color: Colors.white),
+                      items: ["Doctor", "Staff"]
+                          .map((role) => DropdownMenuItem(
+                                value: role,
+                                child: Text(role, style: TextStyle(color: Colors.white)),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null)
+                          setDialogState(() => selectedRole = value);
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Role",
+                        labelStyle: TextStyle(color: Colors.white70),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[800],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    SwitchListTile(
+                      title: Text("Admin Privileges", style: TextStyle(color: Colors.white)),
+                      value: isAdmin,
+                      activeColor: Colors.blue,
+                      inactiveTrackColor: Colors.grey,
+                      onChanged: (value) {
+                        setDialogState(() => isAdmin = value!);
+                      },
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -162,8 +190,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 UserModel updatedUser = UserModel(
                   name: nameController.text.trim(),
                   email: emailController.text.trim(),
+                  phone: phoneController.text.trim(),
                   role: selectedRole,
                   admin: isAdmin,
+                  
                 );
                 await FirebaseService.updateUser(user.email, updatedUser);
                 await _fetchUsers();
@@ -183,50 +213,58 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  void _deleteUser(String email) async {
+  Future<void> _deleteUser(String email) async {
     bool confirm = await _showDeleteConfirmationDialog();
     if (confirm) {
       await FirebaseService.deleteUser(email);
       await _fetchUsers();
+      Get.snackbar(
+        "Success",
+        "User deleted successfully",
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
     }
   }
 
   Future<bool> _showDeleteConfirmationDialog() async {
-    return await Get.dialog(
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: AlertDialog(
-              backgroundColor: Colors.grey[900],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Text("Delete User", style: theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
-              content: Text("Are you sure you want to delete this user?", style: TextStyle(color: Colors.white70)),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(result: false),
-                  child: Text("Cancel", style: TextStyle(color: Colors.white70)),
-                ),
-                ElevatedButton(
-                  onPressed: () => Get.back(result: true),
-                  child: Text("Delete", style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    bool? result = await Get.dialog<bool>(
+      BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: AlertDialog(
+          backgroundColor: Colors.grey[900],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ) ??
-        false;
+          title: Text("Confirm Delete", style: TextStyle(color: Colors.white)),
+          content: Text("Are you sure you want to delete this user?", 
+              style: TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(result: false),
+              child: Text("Cancel", style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              onPressed: () => Get.back(result: true),
+              child: Text("Delete"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    return result ?? false;
   }
 
   void _showUserCreationDialog() {
     TextEditingController nameController = TextEditingController();
     TextEditingController emailController = TextEditingController();
+    TextEditingController phoneController = TextEditingController();
     String selectedRole = "Doctor";
     bool isAdmin = false;
 
@@ -241,95 +279,121 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           title: Text("Create New User", style: theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
           content: StatefulBuilder(
             builder: (context, setDialogState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: "Name",
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      style: TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: "Name",
+                        labelStyle: TextStyle(color: Colors.white70),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[800],
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[800],
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  TextField(
-                    controller: emailController,
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: "Email/Staff ID",
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: emailController,
+                      style: TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: "Email/Staff ID",
+                        labelStyle: TextStyle(color: Colors.white70),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[800],
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[800],
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: selectedRole,
-                    dropdownColor: Colors.grey[900],
-                    style: TextStyle(color: Colors.white),
-                    items: ["Doctor", "Staff"]
-                        .map((role) => DropdownMenuItem(
-                              value: role,
-                              child: Text(role, style: TextStyle(color: Colors.white)),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null)
-                        setDialogState(() => selectedRole = value);
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Role",
-                      labelStyle: TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: phoneController,
+                      style: TextStyle(color: Colors.white),
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: "Phone Number",
+                        labelStyle: TextStyle(color: Colors.white70),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blue),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[800],
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[800],
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  SwitchListTile(
-                    title: Text("Admin Privileges", style: TextStyle(color: Colors.white)),
-                    value: isAdmin,
-                    activeColor: Colors.blue,
-                    inactiveTrackColor: Colors.grey,
-                    onChanged: (value) {
-                      setDialogState(() => isAdmin = value!);
-                    },
-                  ),
-                ],
+                    SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedRole,
+                      dropdownColor: Colors.grey[900],
+                      style: TextStyle(color: Colors.white),
+                      items: ["Doctor", "Staff"]
+                          .map((role) => DropdownMenuItem(
+                                value: role,
+                                child: Text(role, style: TextStyle(color: Colors.white)),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null)
+                          setDialogState(() => selectedRole = value);
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Role",
+                        labelStyle: TextStyle(color: Colors.white70),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[800],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    SwitchListTile(
+                      title: Text("Admin Privileges", style: TextStyle(color: Colors.white)),
+                      value: isAdmin,
+                      activeColor: Colors.blue,
+                      inactiveTrackColor: Colors.grey,
+                      onChanged: (value) {
+                        setDialogState(() => isAdmin = value!);
+                      },
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -344,7 +408,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     emailController.text.trim().isEmpty) {
                   Get.snackbar(
                     "Error",
-                    "Please enter all details",
+                    "Please enter all required details",
                     backgroundColor: Colors.red,
                     colorText: Colors.white,
                   );
@@ -368,6 +432,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 await userController.createUser(
                   name,
                   emailController.text.trim(),
+                  phoneController.text.trim(),
                   isAdmin,
                   selectedRole,
                 );
@@ -377,6 +442,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 if (addMore) {
                   nameController.clear();
                   emailController.clear();
+                  phoneController.clear();
                   setState(() {
                     selectedRole = "Doctor";
                     isAdmin = false;
@@ -400,7 +466,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Future<bool> _showAddMoreDialog() async {
-    return await Get.dialog<bool>(
+    bool? result = await Get.dialog<bool>(
       BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: AlertDialog(
@@ -408,8 +474,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: Text("Success", style: theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
-          content: Text("User created successfully! Add another user?", style: TextStyle(color: Colors.white70)),
+          title: Text("Success", style: TextStyle(color: Colors.white)),
+          content: Text("User created successfully! Add another user?", 
+              style: TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () => Get.back(result: false),
@@ -428,7 +495,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ],
         ),
       ),
-    ) ?? false;
+    );
+    return result ?? false;
   }
 
   @override
@@ -547,7 +615,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          "${user.email} • ${user.role}",
+                                          "${user.email} • ${user.phone} • ${user.role}",
                                           style: TextStyle(
                                             color: Colors.white.withOpacity(0.8),
                                           ),

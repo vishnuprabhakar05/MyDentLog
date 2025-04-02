@@ -3,12 +3,14 @@ class UserModel {
   final String email;
   final String role;
   final bool admin;
+  final String phone;
 
   UserModel({
     required this.name,
     required this.email,
     required this.role,
     this.admin = false,
+    required this.phone,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -17,6 +19,7 @@ class UserModel {
       email: map['email'] ?? '',
       role: map['role'] ?? '',
       admin: map['admin'] ?? false,
+      phone: map['phone'] ?? '',
     );
   }
 
@@ -26,6 +29,7 @@ class UserModel {
       'email': email,
       'role': role,
       'admin': admin,
+      'phone': phone
     };
   }
 }

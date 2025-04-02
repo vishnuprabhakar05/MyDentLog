@@ -33,7 +33,22 @@ class PatientController extends GetxController {
           return null;
         }
       }).whereType<PatientModel>().toList(); // Remove null values safely
-      patients.sort((a, b) => a.opNo.compareTo(b.opNo));
+       patients.sort((a, b) {
+              RegExp numRegex = RegExp(r'\d+'); // Match numbers in string
+
+              // Extract numbers from opNo
+              String numPartA = numRegex.firstMatch(a.opNo)?.group(0) ?? '0';
+              String numPartB = numRegex.firstMatch(b.opNo)?.group(0) ?? '0';
+
+              int numA = int.parse(numPartA);
+              int numB = int.parse(numPartB);
+
+              if (numA != numB) {
+                return numA.compareTo(numB); // Compare numerically
+              } else {
+                return a.opNo.compareTo(b.opNo); // Fallback to string comparison
+              }
+          });
 
       filteredPatients.value = patients;
       print("Patients Updated: ${patients.length}");

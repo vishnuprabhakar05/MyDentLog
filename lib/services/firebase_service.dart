@@ -179,6 +179,7 @@ static String? _extractFolderIdFromUrl(String url) {
             email: userData['email'] ?? '',
             role: userData['role'] ?? 'staff',
             admin: (userData['admin'] is bool) ? userData['admin'] : false,
+            phone: userData['phone'] ?? '',
           );
         }).toList();
       }
@@ -258,4 +259,5 @@ static String? _extractFolderIdFromUrl(String url) {
   static Future<void> updateSettings(SettingsModel settings) async {
     await database.child("settings").update(settings.toMap());
   }  
+  
 }
