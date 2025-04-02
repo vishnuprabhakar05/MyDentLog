@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui'; 
+import 'dart:async';  // Add this import for Timer
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,6 +33,8 @@ class InputController extends GetxController {
   var showIopaUploadSuccess = false.obs;
   var isUploading = false.obs;
   var isUploadingIopa = false.obs;
+  var isOpNoExists = false.obs;
+  final _debouncer = Debouncer(milliseconds: 500);
 
   final FirebaseService _firebaseService = FirebaseService();
 
@@ -46,6 +49,20 @@ class InputController extends GetxController {
     super.onInit();
     fetchLabs();
     _initializeFromArguments();
+    opNoController.addListener(() {
+      _debouncer.run(() => checkOpNoExists(opNoController.text.trim()));
+    });
+  }
+
+  @override
+  void onClose() {
+    opNoController.removeListener(() {});
+    opNoController.dispose();
+    nameController.dispose();
+    phoneController.dispose();
+    placeController.dispose();
+    treatmentController.dispose();
+    super.onClose();
   }
 
   void _initializeFromArguments() {
@@ -67,6 +84,7 @@ class InputController extends GetxController {
         if (patient.treatmentHistory != null) {
           treatmentHistory.value = patient.treatmentHistory!;
         }
+        checkOpNoExists(patient.opNo);
       }
     }
   }
@@ -136,6 +154,16 @@ class InputController extends GetxController {
       },
       textCancel: "Cancel",
     );
+  }
+
+  Future<void> checkOpNoExists(String opNo) async {
+    if (opNo.isEmpty) {
+      isOpNoExists.value = false;
+      return;
+    }
+    
+    final patient = await FirebaseService.getPatientByOpNo(opNo);
+    isOpNoExists.value = patient != null;
   }
 
   void pickFile() async {
@@ -452,84 +480,15 @@ class InputController extends GetxController {
   }
 }
 
-class DriveImageViewer extends StatelessWidget {
-  final String imageUrl;
+class Debouncer {
+  final int milliseconds;
+  Timer? _timer;
 
-  const DriveImageViewer({Key? key, required this.imageUrl}) : super(key: key);
+  Debouncer({required this.milliseconds});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.open_in_browser),
-            onPressed: () async {
-              final Uri url = Uri.parse(imageUrl);
-              if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-                Get.snackbar(
-                  "Error",
-                  "Could not launch the URL",
-                  snackPosition: SnackPosition.BOTTOM,
-                );
-              }
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: InteractiveViewer(
-          panEnabled: true,
-          minScale: 0.5,
-          maxScale: 4.0,
-          child: Image.network(
-            _getDirectImageUrl(imageUrl),
-            fit: BoxFit.contain,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded / 
-                        loadingProgress.expectedTotalBytes!
-                      : null,
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error, color: Colors.red, size: 50),
-                  const SizedBox(height: 20),
-                  Text(
-                    "Could not load image",
-                    style: TextStyle(color: Colors.white.withOpacity(0.8)),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => launchUrl(Uri.parse(imageUrl), 
-                        mode: LaunchMode.externalApplication),
-                    child: const Text("Open in Browser"),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _getDirectImageUrl(String driveUrl) {
-    if (driveUrl.contains("drive.google.com")) {
-      final fileId = driveUrl.split('/d/')[1].split('/')[0];
-      return "https://drive.google.com/uc?export=view&id=$fileId";
-    }
-    return driveUrl;
+  void run(VoidCallback action) {
+    _timer?.cancel();
+    _timer = Timer(Duration(milliseconds: milliseconds), action);
   }
 }
 
@@ -589,33 +548,51 @@ class InputScreen extends StatelessWidget {
                         key: controller.formKey,
                         child: Column(
                           children: [
+                            Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildModernTextField(
+                                    controller: controller.opNoController, 
+                                    label: "OP No", 
+                                    icon: Icons.numbers,
+                                    isReadOnly: controller.isReadOnly.value,
+                                    onChanged: controller.isReadOnly.value 
+                                        ? null 
+                                        : (value) => controller.checkOpNoExists(value.trim()),
+                                  ),
+                                  Obx(() => (controller.isOpNoExists.value && !controller.isReadOnly.value)
+                                    ? Padding(
+                                        padding: const EdgeInsets.only(top: 4.0, left: 12.0),
+                                        child: Text(
+                                          "OP Number already exists! Editing will update existing record.",
+                                          style: TextStyle(color: Colors.orange),
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
+                                  ),
+                                ],
+                              ),
+                            const SizedBox(height: 15),
                             _buildModernTextField(
-                              controller.opNoController, 
-                              "OP No", 
-                              Icons.numbers,
-                              controller.isReadOnly.value,
+                              controller: controller.nameController, 
+                              label: "Name", 
+                              icon: Icons.person,
+                              isReadOnly: controller.isReadOnly.value,
                             ),
                             const SizedBox(height: 15),
                             _buildModernTextField(
-                              controller.nameController, 
-                              "Name", 
-                              Icons.person,
-                              controller.isReadOnly.value,
+                              controller: controller.phoneController, 
+                              label: "Phone", 
+                              icon: Icons.phone, 
+                              isReadOnly: controller.isReadOnly.value,
+                              keyboardType: TextInputType.phone,
                             ),
                             const SizedBox(height: 15),
                             _buildModernTextField(
-                              controller.phoneController, 
-                              "Phone", 
-                              Icons.phone, 
-                              controller.isReadOnly.value,
-                              TextInputType.phone,
-                            ),
-                            const SizedBox(height: 15),
-                            _buildModernTextField(
-                              controller.placeController, 
-                              "Place", 
-                              Icons.location_on,
-                              controller.isReadOnly.value,
+                              controller: controller.placeController, 
+                              label: "Place", 
+                              icon: Icons.location_on,
+                              isReadOnly: controller.isReadOnly.value,
                             ),
                             const SizedBox(height: 20),
                             _buildUploadSection(),
@@ -636,6 +613,43 @@ class InputScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildModernTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isReadOnly,
+    TextInputType keyboardType = TextInputType.text,
+    ValueChanged<String>? onChanged,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white),
+      readOnly: isReadOnly,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: Icon(icon, color: Colors.white70),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.1),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.blue),
+        ),
+      ),
+      validator: (value) => isReadOnly ? null : (value == null || value.isEmpty ? "$label cannot be empty" : null),
     );
   }
 
@@ -884,41 +898,6 @@ class InputScreen extends StatelessWidget {
             : const SizedBox());
   }
 
-  Widget _buildModernTextField(
-    TextEditingController controller, 
-    String label, 
-    IconData icon,
-    bool isReadOnly, [
-    TextInputType keyboardType = TextInputType.text,
-  ]) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
-      readOnly: isReadOnly,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
-        prefixIcon: Icon(icon, color: Colors.white70),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.blue),
-        ),
-      ),
-      validator: (value) => isReadOnly ? null : (value == null || value.isEmpty ? "$label cannot be empty" : null),
-    );
-  }
-
   Widget _buildTreatmentSection(ThemeData theme) {
     return Obx(() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1029,7 +1008,9 @@ class InputScreen extends StatelessWidget {
                             value: workType,
                             child: Text(workType, style: const TextStyle(color: Colors.white)),
                           )).toList(),
-                          onChanged: (String? workType) => controller.selectedWorkType.value = workType,
+                          onChanged: (String? workType) {
+                            controller.selectedWorkType.value = workType;
+                          },
                         )),
                       ),
                     ],
@@ -1118,5 +1099,86 @@ class InputScreen extends StatelessWidget {
         ],
       ],
     ));
+  }
+}
+
+class DriveImageViewer extends StatelessWidget {
+  final String imageUrl;
+
+  const DriveImageViewer({Key? key, required this.imageUrl}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.open_in_browser),
+            onPressed: () async {
+              final Uri url = Uri.parse(imageUrl);
+              if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+                Get.snackbar(
+                  "Error",
+                  "Could not launch the URL",
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              }
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          panEnabled: true,
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Image.network(
+            _getDirectImageUrl(imageUrl),
+            fit: BoxFit.contain,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded / 
+                        loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, color: Colors.red, size: 50),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Could not load image",
+                    style: TextStyle(color: Colors.white.withOpacity(0.8)),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => launchUrl(Uri.parse(imageUrl), 
+                        mode: LaunchMode.externalApplication),
+                    child: const Text("Open in Browser"),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getDirectImageUrl(String driveUrl) {
+    if (driveUrl.contains("drive.google.com")) {
+      final fileId = driveUrl.split('/d/')[1].split('/')[0];
+      return "https://drive.google.com/uc?export=view&id=$fileId";
+    }
+    return driveUrl;
   }
 }

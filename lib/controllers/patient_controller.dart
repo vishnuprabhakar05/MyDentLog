@@ -33,6 +33,7 @@ class PatientController extends GetxController {
           return null;
         }
       }).whereType<PatientModel>().toList(); // Remove null values safely
+      patients.sort((a, b) => a.opNo.compareTo(b.opNo));
 
       filteredPatients.value = patients;
       print("Patients Updated: ${patients.length}");
