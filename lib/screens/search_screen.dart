@@ -8,6 +8,9 @@ import 'package:my_dentlog_app/widgets/patient_list_item.dart';
 import 'package:my_dentlog_app/screens/input_screen.dart' as screens;
 import 'package:my_dentlog_app/screens/labs_screen.dart';
 import 'package:my_dentlog_app/screens/settings_screen.dart'; // Settings screen
+import 'package:my_dentlog_app/screens/appointment_screen.dart';
+import '../controllers/appointment_controller.dart';
+
 
 class SearchScreen extends StatelessWidget {
   final TextEditingController _searchController = TextEditingController();
@@ -46,7 +49,8 @@ class SearchScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          border:
+                              Border.all(color: Colors.white.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
@@ -58,7 +62,8 @@ class SearchScreen extends StatelessWidget {
                                 decoration: InputDecoration(
                                   hintText: "Search OP No, Name, Phone, Place",
                                   hintStyle: TextStyle(color: Colors.white70),
-                                  prefixIcon: Icon(Icons.search, color: Colors.white),
+                                  prefixIcon:
+                                      Icon(Icons.search, color: Colors.white),
                                   filled: true,
                                   fillColor: Colors.white.withOpacity(0.2),
                                   border: OutlineInputBorder(
@@ -80,21 +85,26 @@ class SearchScreen extends StatelessWidget {
                                   if (user != null)
                                     Text(
                                       user.name,
-                                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500),
                                     ),
                                   SizedBox(width: 8),
 
                                   // Settings icon for admin
-                                  if (user != null && user.admin) 
+                                  if (user != null && user.admin)
                                     IconButton(
-                                      icon: Icon(Icons.settings, color: Colors.white),
+                                      icon: Icon(Icons.settings,
+                                          color: Colors.white),
                                       onPressed: () {
                                         Get.to(() => SettingsScreen());
                                       },
                                     ),
 
                                   IconButton(
-                                    icon: Icon(Icons.logout, color: Colors.white),
+                                    icon:
+                                        Icon(Icons.logout, color: Colors.white),
                                     onPressed: () => _confirmLogout(context),
                                   ),
                                 ],
@@ -111,14 +121,20 @@ class SearchScreen extends StatelessWidget {
                 Expanded(
                   child: Obx(() {
                     if (patientController.isLoading.value) {
-                      return Center(child: CircularProgressIndicator(color: Colors.white));
+                      return Center(
+                          child:
+                              CircularProgressIndicator(color: Colors.white));
                     } else if (patientController.filteredPatients.isEmpty) {
-                      return Center(child: Text("No patients found", style: TextStyle(color: Colors.white)));
+                      return Center(
+                          child: Text("No patients found",
+                              style: TextStyle(color: Colors.white)));
                     } else {
                       return ListView.builder(
                         itemCount: patientController.filteredPatients.length,
                         itemBuilder: (context, index) {
-                          return PatientListItem(patient: patientController.filteredPatients[index]);
+                          return PatientListItem(
+                              patient:
+                                  patientController.filteredPatients[index]);
                         },
                       );
                     }
@@ -131,11 +147,12 @@ class SearchScreen extends StatelessWidget {
       ),
 
       // Floating action button with a popup menu for "New Patient" and "Add Lab"
+      // In your search_screen.dart, update the floatingActionButton:
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           showModalBottomSheet(
             context: context,
-            shape: RoundedRectangleBorder(
+            shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
             builder: (context) {
@@ -145,20 +162,37 @@ class SearchScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ListTile(
-                      leading: Icon(Icons.person_add, color: Colors.blueAccent),
-                      title: Text("New Patient"),
+                      leading: const Icon(Icons.person_add,
+                          color: Colors.blueAccent),
+                      title: const Text("New Patient"),
                       onTap: () {
-                        Navigator.pop(context); // Close modal
-                        Get.to(() => screens.InputScreen(), arguments: {'patient': null, 'isReadOnly': false});
+                        Navigator.pop(context);
+                        Get.to(() => screens.InputScreen(),
+                            arguments: {'patient': null, 'isReadOnly': false});
                       },
                     ),
-                    Divider(),
+                    const Divider(),
                     ListTile(
-                      leading: Icon(Icons.medical_services, color: Colors.blueAccent),
-                      title: Text("Add Lab"),
+                      leading: const Icon(Icons.medical_services,
+                          color: Colors.blueAccent),
+                      title: const Text("Add Lab"),
                       onTap: () {
-                        Navigator.pop(context); // Close modal
+                        Navigator.pop(context);
                         Get.to(() => LabsScreen());
+                      },
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.calendar_today,
+                          color: Colors.blueAccent),
+                      title: const Text("New Appointment"),
+                      onTap: () {
+                        Navigator.pop(context);
+                        if (!Get.isRegistered<AppointmentController>()) {
+                          Get.put(AppointmentController());
+                        }
+
+                        Get.to(() => AppointmentScreen());
                       },
                     ),
                   ],
@@ -167,8 +201,8 @@ class SearchScreen extends StatelessWidget {
             },
           );
         },
-        icon: Icon(Icons.add, color: Colors.white),
-        label: Text("Add", style: TextStyle(color: Colors.white)),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text("Add", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blueAccent.shade700,
       ),
     );
